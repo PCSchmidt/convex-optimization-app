@@ -1,0 +1,22 @@
+Build an app that showcases Convex Optimization in a creative way, focus on visually illustrating core concepts such as feasible sets, convex sets, objective functions, and optimal solutions. Use FastHTML:
+1. App Features
+Interactive Visuals: Illustrate convex sets and optimization problems (linear programming, quadratic programming). Use interactive charts.
+Solvers: Integrate algorithms - gradient descent or interior-point methods to solve convex optimization problems.
+User Inputs: Allow users to modify parameters of optimization problems and visualize how the solution changes.
+Explanations: Provide bullet-pointed summaries and explanations of key concepts.
+Math Rendering: Use LaTeX or MathJax for clean, readable mathematical expressions.
+2. Tech Stack
+FastHTML: For building the UI/UX.
+Python (SciPy, CVXPY): For handling the convex optimization problems.
+Matplotlib / Plotly: For generating interactive visualizations.
+Django or FastAPI: As a backend to manage requests, solvers, and API interactions.
+3. Deployment
+GitHub Pages: Deploy the front-end with FastHTML on GitHub Pages.
+Backend: Since GitHub Pages only supports static sites, you might need to deploy the backend (Django/FastAPI) on a platform like Heroku or another free-tier service.
+4. Steps to Build
+Set up FastHTML and create the base UI.
+Integrate optimization libraries (CVXPY, SciPy) to solve example problems.
+Build interactive visualizations to represent convex sets and objective functions.
+Allow user input to dynamically adjust problem constraints and parameters.
+Deploy the front-end to GitHub Pages and backend to a separate service.
+This approach will let you creatively demonstrate the key ideas behind convex optimization while giving users an interactive way to explore it.

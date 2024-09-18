@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadratic Programming - Convex Optimization App</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1, h2 { color: #333; }
+        #plot { width: 100%; height: 500px; }
+        form { margin-bottom: 20px; }
+        label { display: inline-block; width: 120px; }
+        input { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Quadratic Programming</h1>
+    
+    <section id="explanation">
+        <h2>What is Quadratic Programming?</h2>
+        <p>Quadratic programming (QP) is a special type of mathematical optimization problem. It is the problem of optimizing (minimizing or maximizing) a quadratic function of several variables subject to linear constraints on these variables.</p>
+        <h3>General Form:</h3>
+        <p>
+            Minimize: \(\frac{1}{2}x^T P x + q^T x + r\)<br>
+            Subject to: \(Ax \leq b\)<br>
+            \(Gx = h\)
+        </p>
+        <p>Where:</p>
+        <ul>
+            <li>\(x\) is the vector of variables to be determined</li>
+            <li>\(P\) is a symmetric matrix defining the quadratic coefficients</li>
+            <li>\(q\) is a vector defining the linear coefficients</li>
+            <li>\(r\) is a scalar</li>
+            <li>\(A\) and \(b\) define inequality constraints</li>
+            <li>\(G\) and \(h\) define equality constraints</li>
+        </ul>
+    </section>
+
+    <section id="problem">
+        <h2>Example Problem</h2>
+        <form action="/quadratic_program" method="get">
+            <p>
+                Minimize: (<input type="number" name="a" value="{{ a }}" step="0.1">x)² + (<input type="number" name="b" value="{{ b }}" step="0.1">y)²<br>
+                Subject to:<br>
+                x + y = <input type="number" name="c" value="{{ c }}" step="0.1"><br>
+                x - y ≥ 1
+            </p>
+            <input type="submit" value="Solve">
+        </form>
+    </section>
+
+    <section id="visualization">
+        <h2>Visualization</h2>
+        <div id="plot"></div>
+    </section>
+
+    <section id="results">
+        <h2>Results</h2>
+        <p>Optimal solution: x = {{ "%.2f"|format(result.x[0]) }}, y = {{ "%.2f"|format(result.x[1]) }}</p>
+        <p>Optimal value: {{ "%.2f"|format(result.primal_objective) }}</p>
+    </section>
+
+    <a href="/">Back to Home</a>
+
+    <script>
+        var plotData = JSON.parse('{{ plot | safe }}');
+        Plotly.newPlot('plot', plotData.data, plotData.layout);
+    </script>
+</body>
+</html>
