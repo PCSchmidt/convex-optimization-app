@@ -3,71 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quadratic Programming - Convex Optimization App</title>
+    <title>Quadratic Programming Solver - Convex Optimization App</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
         h1, h2 { color: #333; }
-        #plot { width: 100%; height: 500px; }
-        form { margin-bottom: 20px; }
-        label { display: inline-block; width: 120px; }
-        input { margin-bottom: 10px; }
+        form { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        input[type="submit"] { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #45a049; }
+        #result { margin-top: 20px; padding: 10px; background-color: #e0e0e0; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <h1>Quadratic Programming</h1>
+    <h1>Quadratic Programming Solver</h1>
     
     <section id="explanation">
         <h2>What is Quadratic Programming?</h2>
-        <p>Quadratic programming (QP) is a special type of mathematical optimization problem. It is the problem of optimizing (minimizing or maximizing) a quadratic function of several variables subject to linear constraints on these variables.</p>
+        <p>Quadratic programming (QP) is a type of convex optimization problem where the objective function is quadratic and the constraints are linear. It's an extension of linear programming that allows for more complex relationships in the objective function while maintaining the simplicity of linear constraints.</p>
         <h3>General Form:</h3>
         <p>
-            Minimize: \(\frac{1}{2}x^T P x + q^T x + r\)<br>
+            Minimize: \(\frac{1}{2}x^TQx + c^Tx\)<br>
             Subject to: \(Ax \leq b\)<br>
-            \(Gx = h\)
+            \(x \geq 0\)
         </p>
-        <p>Where:</p>
-        <ul>
-            <li>\(x\) is the vector of variables to be determined</li>
-            <li>\(P\) is a symmetric matrix defining the quadratic coefficients</li>
-            <li>\(q\) is a vector defining the linear coefficients</li>
-            <li>\(r\) is a scalar</li>
-            <li>\(A\) and \(b\) define inequality constraints</li>
-            <li>\(G\) and \(h\) define equality constraints</li>
-        </ul>
+        <p>Where \(x\) represents the variables to be determined, \(Q\) is a symmetric matrix defining the quadratic terms, \(c\) is a vector of coefficients for the linear terms, \(A\) is a matrix and \(b\) is a vector defining the linear constraints.</p>
     </section>
 
-    <section id="problem">
-        <h2>Example Problem</h2>
-        <form action="/quadratic_program" method="get">
-            <p>
-                Minimize: (<input type="number" name="a" value="{{ a }}" step="0.1">x)² + (<input type="number" name="b" value="{{ b }}" step="0.1">y)²<br>
-                Subject to:<br>
-                x + y = <input type="number" name="c" value="{{ c }}" step="0.1"><br>
-                x - y ≥ 1
-            </p>
-            <input type="submit" value="Solve">
-        </form>
-    </section>
+    <form action="/quadratic_program" method="post">
+        <label for="objective">Objective Function (quadratic terms followed by linear terms):</label>
+        <input type="text" id="objective" name="objective" required placeholder="e.g., 2x^2 + 3y^2 + xy + 4x + 5y">
+        
+        <label for="constraints">Constraints (one per line):</label>
+        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0"></textarea>
+        
+        <input type="submit" value="Solve">
+    </form>
 
-    <section id="visualization">
-        <h2>Visualization</h2>
-        <div id="plot"></div>
-    </section>
+    {% if result %}
+    <div id="result">
+        <h2>Result:</h2>
+        <pre>{{ result }}</pre>
+    </div>
+    {% endif %}
 
-    <section id="results">
-        <h2>Results</h2>
-        <p>Optimal solution: x = {{ "%.2f"|format(result.x[0]) }}, y = {{ "%.2f"|format(result.x[1]) }}</p>
-        <p>Optimal value: {{ "%.2f"|format(result.primal_objective) }}</p>
-    </section>
-
-    <a href="/">Back to Home</a>
-
-    <script>
-        var plotData = JSON.parse('{{ plot | safe }}');
-        Plotly.newPlot('plot', plotData.data, plotData.layout);
-    </script>
+    <p><a href="/">Back to Home</a></p>
 </body>
 </html>

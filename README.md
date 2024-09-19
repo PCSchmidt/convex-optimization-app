@@ -1,115 +1,145 @@
 # Convex Optimization App
 
-This application is designed to showcase Convex Optimization concepts in a creative and interactive way. It focuses on visually illustrating core concepts such as feasible sets, convex sets, objective functions, and optimal solutions through interactive visualizations of linear and quadratic programming problems.
+## Introduction
 
-## Project Goals
+The Convex Optimization App is an educational and practical tool designed to help users understand and solve convex optimization problems, with a focus on linear and quadratic programming. This application provides both a theoretical foundation and hands-on experience with optimization techniques widely used in various fields such as operations research, machine learning, and economics.
 
-1. Demonstrate key concepts of convex optimization through interactive visualizations.
-2. Provide users with hands-on experience in modifying optimization problems and observing results.
-3. Offer clear explanations of convex optimization principles and their applications.
-4. Create an educational tool for students and professionals learning about convex optimization.
+## What is Convex Optimization?
 
-## Tech Stack
+Convex optimization is a subfield of mathematical optimization that deals with the minimization of convex functions over convex sets. It's particularly important because:
 
-- **Frontend**: FastHTML for building the UI/UX
-- **Backend**: Python with FastHTML as the web framework
-- **Optimization Solver**: CVXPY
-- **Visualization**: Plotly
-- **Mathematical Expressions**: MathJax
+1. Many real-world problems can be modeled as convex optimization problems.
+2. Convex problems have desirable properties, such as the guarantee that any local optimum is also a global optimum.
+3. Efficient algorithms exist for solving convex optimization problems.
+
+Key concepts in convex optimization include:
+
+- Convex Sets: A set is convex if the line segment between any two points in the set is also contained in the set.
+- Convex Functions: A function is convex if its epigraph (the set of points above the graph) is a convex set.
+- Objective Function: The function we aim to minimize or maximize.
+- Constraints: Conditions that the solution must satisfy, often defining the feasible set.
 
 ## Features
 
-1. **Interactive Visuals**: 
-   - Illustrate convex sets and optimization problems (linear programming, quadratic programming)
-   - Use interactive charts powered by Plotly
+### 1. Linear Programming Solver
 
-2. **Optimization Solvers**: 
-   - Integrate CVXPY to solve convex optimization problems
+Linear Programming (LP) is a method to achieve the best outcome (maximum profit or lowest cost) in a mathematical model whose requirements are represented by linear relationships.
 
-3. **User Inputs**: 
-   - Allow users to modify parameters of optimization problems
-   - Visualize how the solution changes based on user inputs
+Our LP solver allows users to input:
+- An objective function in the form of a linear equation
+- Constraints as linear inequalities
 
-4. **Explanations**: 
-   - Provide bullet-pointed summaries and explanations of key concepts
-   - Offer insights into the mathematical foundations of convex optimization
+The solver uses the PuLP library to find the optimal solution, providing:
+- The values of decision variables
+- The optimal value of the objective function
+- The solution status
 
-5. **Math Rendering**: 
-   - Use MathJax for clean, readable mathematical expressions
+### 2. Quadratic Programming Solver
 
-## Installation
+Quadratic Programming (QP) extends linear programming to allow for quadratic terms in the objective function while maintaining linear constraints.
 
-1. Clone this repository:
+Our QP solver enables users to input:
+- A quadratic objective function
+- Linear constraints
+
+The solver utilizes the CVXPY library to solve the quadratic program, offering:
+- Optimal values for decision variables
+- The minimum value of the objective function
+- The solution status
+
+### 3. Educational Content
+
+The app provides educational content on:
+- The basics of convex optimization
+- Detailed explanations of linear and quadratic programming
+- Real-world applications of these optimization techniques
+- The mathematical foundations behind the solvers
+
+## How to Use the App
+
+1. Navigate to the home page for an introduction to Convex Optimization.
+2. Choose between the Linear Programming or Quadratic Programming solver.
+3. Input your problem:
+   - For LP: Enter the coefficients of your objective function and constraints.
+   - For QP: Provide the quadratic and linear terms of your objective function and linear constraints.
+4. Click "Solve" to get the optimal solution and interpretation.
+
+## Installation and Setup
+
+1. Clone the repository:
    ```
    git clone https://github.com/yourusername/convex-optimization-app.git
+   ```
+
+2. Navigate to the project directory:
+   ```
    cd convex-optimization-app
    ```
 
-2. Create a virtual environment and activate it:
+3. Create and activate a virtual environment:
    ```
    python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    ```
 
-3. Install the required packages:
+4. Install dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-## Usage
-
-1. Run the application:
+5. Run the application:
    ```
-   python app.py
+   uvicorn app:app --reload
    ```
 
-2. Open a web browser and navigate to `http://localhost:8000` (or the URL shown in the terminal).
+6. Open a web browser and go to `http://localhost:8000`.
 
-3. Explore the different optimization problems by clicking on the links on the home page.
+## Future Enhancements
 
-4. Modify the parameters of each problem using the input forms and observe how the optimal solution changes.
+We plan to expand the Convex Optimization App with the following features:
 
-## Current Implemented Features
+1. Support for more optimization problem types:
+   - Semidefinite Programming (SDP)
+   - Conic Optimization
+   - Geometric Programming
 
-- Home page with an introduction to convex optimization and key concepts
-- Interactive linear programming problem solver and visualizer
-- Interactive quadratic programming problem solver and visualizer
-- User input forms to modify problem parameters
-- Visualizations of feasible regions and optimal solutions
-- Explanations of problem formulations and solutions
+2. Interactive visualizations:
+   - 2D and 3D plots of feasible regions and optimal solutions
+   - Step-by-step algorithm visualizations
 
-## Potential Future Enhancements
+3. Problem library:
+   - A collection of common optimization problems for practice
+   - Real-world case studies
 
-1. **Additional Problem Types**: 
-   - Implement more types of convex optimization problems (e.g., semidefinite programming, geometric programming)
+4. Advanced solver options:
+   - Choice of different algorithms
+   - Custom stopping criteria and solver parameters
 
-2. **Advanced Visualizations**: 
-   - 3D visualizations for problems with three variables
-   - Animated visualizations to show the optimization process
+5. Tutorial system:
+   - Guided walkthroughs for beginners
+   - Quizzes and exercises to test understanding
 
-3. **Tutorial System**: 
-   - Guided walkthroughs of solving optimization problems
-   - Step-by-step explanations of solution methods
+6. API access:
+   - Allowing programmatic access to the solvers for integration with other applications
 
-4. **User Accounts**: 
-   - Allow users to save and share their custom problems
-
-5. **API Integration**: 
-   - Provide an API for solving custom convex optimization problems
-
-6. **Mobile Responsiveness**: 
-   - Improve the UI for better usability on mobile devices
-
-7. **Performance Optimization**: 
-   - Implement caching and other optimizations for faster problem solving and visualization
-
-8. **Internationalization**: 
-   - Add support for multiple languages
+7. Performance benchmarking:
+   - Comparison of different solvers and algorithms
+   - Scalability tests for large-scale problems
 
 ## Contributing
 
-Contributions to improve the app or add new features are welcome. Please feel free to submit a pull request or open an issue to discuss potential changes or enhancements.
+We welcome contributions to the Convex Optimization App! Whether you're fixing bugs, improving documentation, or proposing new features, your efforts are appreciated. Please see our CONTRIBUTING.md file for guidelines on how to submit your contributions.
 
 ## License
 
-This project is open-source and available under the MIT License.
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Acknowledgments
+
+We'd like to thank the developers of PuLP, CVXPY, and FastAPI, whose excellent libraries make this application possible. We also acknowledge the broader optimization community for their ongoing research and educational resources that inspire and inform this project.
+
+## Contact
+
+For questions, suggestions, or collaborations, please open an issue on our GitHub repository or contact the maintainers directly at [your-email@example.com].
+
+Thank you for using and contributing to the Convex Optimization App!

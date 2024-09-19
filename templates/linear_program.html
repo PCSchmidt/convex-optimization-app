@@ -3,68 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linear Programming - Convex Optimization App</title>
+    <title>Linear Programming Solver - Convex Optimization App</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
         h1, h2 { color: #333; }
-        #plot { width: 100%; height: 500px; }
-        form { margin-bottom: 20px; }
-        label { display: inline-block; width: 120px; }
-        input { margin-bottom: 10px; }
+        form { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        input[type="submit"] { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #45a049; }
+        #result { margin-top: 20px; padding: 10px; background-color: #e0e0e0; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <h1>Linear Programming</h1>
+    <h1>Linear Programming Solver</h1>
     
     <section id="explanation">
         <h2>What is Linear Programming?</h2>
-        <p>Linear programming (LP) is a method to achieve the best outcome (such as maximum profit or lowest cost) in a mathematical model whose requirements are represented by linear relationships. It is a special case of convex optimization where both the objective function and the constraints are linear.</p>
+        <p>Linear programming (LP) is a method to achieve the best outcome (such as maximum profit or lowest cost) in a mathematical model whose requirements are represented by linear relationships. It is a special case of convex optimization where the objective function is linear and the constraints are linear equalities or inequalities.</p>
         <h3>General Form:</h3>
         <p>
             Minimize (or Maximize): \(c^T x\)<br>
             Subject to: \(Ax \leq b\)<br>
             \(x \geq 0\)
         </p>
-        <p>Where:</p>
-        <ul>
-            <li>\(x\) is the vector of variables to be determined</li>
-            <li>\(c\) and \(b\) are vectors of known coefficients</li>
-            <li>\(A\) is a known matrix of coefficients</li>
-        </ul>
+        <p>Where \(x\) represents the variables to be determined, \(c\) and \(b\) are vectors of coefficients, and \(A\) is a matrix of coefficients.</p>
     </section>
 
-    <section id="problem">
-        <h2>Example Problem</h2>
-        <form action="/linear_program" method="get">
-            <p>
-                Minimize: <input type="number" name="c1" value="{{ c1 }}" step="0.1">x + <input type="number" name="c2" value="{{ c2 }}" step="0.1">y<br>
-                Subject to:<br>
-                x + y ≤ <input type="number" name="b" value="{{ b }}" step="0.1"><br>
-                x ≥ 0, y ≥ 0
-            </p>
-            <input type="submit" value="Solve">
-        </form>
-    </section>
+    <form action="/linear_program" method="post">
+        <label for="objective">Objective Function:</label>
+        <input type="text" id="objective" name="objective" required placeholder="e.g., 3x + 2y">
+        
+        <label for="constraints">Constraints (one per line):</label>
+        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0"></textarea>
+        
+        <input type="submit" value="Solve">
+    </form>
 
-    <section id="visualization">
-        <h2>Visualization</h2>
-        <div id="plot"></div>
-    </section>
+    {% if result %}
+    <div id="result">
+        <h2>Result:</h2>
+        <pre>{{ result }}</pre>
+    </div>
+    {% endif %}
 
-    <section id="results">
-        <h2>Results</h2>
-        <p>Optimal solution: x = {{ "%.2f"|format(result.x[0]) }}, y = {{ "%.2f"|format(result.x[1]) }}</p>
-        <p>Optimal value: {{ "%.2f"|format(result.primal_objective) }}</p>
-    </section>
-
-    <a href="/">Back to Home</a>
-
-    <script>
-        var plotData = JSON.parse('{{ plot | safe }}');
-        Plotly.newPlot('plot', plotData.data, plotData.layout);
-    </script>
+    <p><a href="/">Back to Home</a></p>
 </body>
 </html>
