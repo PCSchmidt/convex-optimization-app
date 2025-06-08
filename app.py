@@ -1,10 +1,12 @@
-# codex/create-solvers-module-and-refactor-routes
 """FastAPI application setup."""
+# codex/find-and-fix-a-bug-in-codebase
+
+from __future__ import annotations
+
+# main
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-import uvicorn
 import pulp
 import cvxpy as cp
 from parser import parse_polynomial, extract_linear_coeffs, extract_quadratic_terms
@@ -12,15 +14,9 @@ import sympy as sp
 import numpy as np
 import re
 
-# main
-
-from __future__ import annotations
-
-from fastapi import FastAPI
-
 from routes import router
 
-#  codex/create-solvers-module-and-refactor-routes
+templates = Jinja2Templates(directory="templates")
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -28,14 +24,13 @@ def create_app() -> FastAPI:
     application.include_router(router)
     return application
 
+
+app = create_app()
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-# main
-
-
-# codex/create-solvers-module-and-refactor-routes
-app = create_app()
 
 @app.post("/linear_program", response_class=HTMLResponse)
 async def linear_program_post(request: Request, objective: str = Form(...), constraints: str = Form(...)):
@@ -95,6 +90,12 @@ async def linear_program_post(request: Request, objective: str = Form(...), cons
         # Constraints
         for lhs, op, rhs in parsed_constraints:
             lhs_syms, lhs_poly = parse_polynomial(lhs)
+            # Ensure any variables found in this constraint exist
+            for sym in lhs_syms:
+                name = str(sym)
+                if name not in variables:
+                    lb, ub = bounds.get(name, [None, None])
+                    variables[name] = pulp.LpVariable(name, lowBound=lb, upBound=ub)
             coeffs = extract_linear_coeffs(lhs_poly)
             lhs_expr = pulp.lpSum(coef * variables[var] for var, coef in coeffs.items())
             if op == "<=":

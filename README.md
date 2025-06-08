@@ -58,12 +58,14 @@ The solver utilizes the CVXPY library to solve the quadratic program, offering:
 
 **Example Input**
 ```text
-Objective: 2x^2 + 3y^2 + xy + 4x + 5y
+Objective: 2x^2 + 3y^2 + 4x + 5y
 Constraints:
 x + y <= 10
 x >= 0
 y >= 0
 ```
+
+Cross terms in the objective function (e.g., `xy`) are currently unsupported.
 
 ### 3. Educational Content
 
@@ -114,6 +116,17 @@ This project requires **Python 3.11**.
 
 6. Open a web browser and go to `http://localhost:8000`.
 
+## Deployment
+
+To build and run the Docker image:
+
+```bash
+docker build -t convex-optimization-app .
+docker run -p 8000:8000 convex-optimization-app
+```
+
+Then visit `http://localhost:8000` in your browser.
+
 ## Future Enhancements
 
 We plan to expand the Convex Optimization App with the following features:
@@ -150,6 +163,16 @@ We plan to expand the Convex Optimization App with the following features:
 
 The app currently provides command-line style input forms and basic textual output.
 Interactive visualizations and advanced solver options are still under development.
+
+## Running Tests
+
+This project uses `pytest` for its test suite. After installing the dependencies, run:
+
+```bash
+pip install pytest
+pytest
+```
+
 
 ## Contributing
 
