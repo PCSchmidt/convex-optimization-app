@@ -38,6 +38,18 @@ def solve_lp(objective: str, constraints: str) -> str:
     obj_terms = parse_expression(objective)
     variables = {var: pulp.LpVariable(var) for _, var in obj_terms}
 
+    # Scan constraints for additional variables
+    for constraint in constraints.splitlines():
+        if "<=" in constraint:
+            lhs, _ = constraint.split("<=")
+        elif ">=" in constraint:
+            lhs, _ = constraint.split(">=")
+        else:
+            continue
+        for _, var in parse_expression(lhs):
+            if var not in variables:
+                variables[var] = pulp.LpVariable(var)
+
     prob += pulp.lpSum(coef * variables[var] for coef, var in obj_terms)
 
     for constraint in constraints.splitlines():
