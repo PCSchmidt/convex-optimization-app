@@ -34,6 +34,15 @@ The solver uses the PuLP library to find the optimal solution, providing:
 - The optimal value of the objective function
 - The solution status
 
+**Example Input**
+```text
+Objective: 3x + 2y
+Constraints:
+x + y <= 10
+x >= 0
+y >= 0
+```
+
 ### 2. Quadratic Programming Solver
 
 Quadratic Programming (QP) extends linear programming to allow for quadratic terms in the objective function while maintaining linear constraints.
@@ -46,6 +55,15 @@ The solver utilizes the CVXPY library to solve the quadratic program, offering:
 - Optimal values for decision variables
 - The minimum value of the objective function
 - The solution status
+
+**Example Input**
+```text
+Objective: 2x^2 + 3y^2 + xy + 4x + 5y
+Constraints:
+x + y <= 10
+x >= 0
+y >= 0
+```
 
 ### 3. Educational Content
 
@@ -66,9 +84,11 @@ The app provides educational content on:
 
 ## Installation and Setup
 
+This project requires **Python 3.11**.
+
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/convex-optimization-app.git
+   git clone https://github.com/PCSchmidt/convex-optimization-app.git
    ```
 
 2. Navigate to the project directory:
@@ -126,6 +146,11 @@ We plan to expand the Convex Optimization App with the following features:
    - Comparison of different solvers and algorithms
    - Scalability tests for large-scale problems
 
+## Current Limitations
+
+The app currently provides command-line style input forms and basic textual output.
+Interactive visualizations and advanced solver options are still under development.
+
 ## Contributing
 
 We welcome contributions to the Convex Optimization App! Whether you're fixing bugs, improving documentation, or proposing new features, your efforts are appreciated. Please see our CONTRIBUTING.md file for guidelines on how to submit your contributions.
@@ -140,6 +165,6 @@ We'd like to thank the developers of PuLP, CVXPY, and FastAPI, whose excellent l
 
 ## Contact
 
-For questions, suggestions, or collaborations, please open an issue on our GitHub repository or contact the maintainers directly at [your-email@example.com].
+For questions, suggestions, or collaborations, please open an issue on our GitHub repository or contact the maintainers directly at [p.christopher.schmidt@gmail.com].
 
 Thank you for using and contributing to the Convex Optimization App!

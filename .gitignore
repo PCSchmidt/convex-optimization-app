@@ -1,4 +1,22 @@
+# Environment variables and secrets
 .env
 .sesskey
+# codex/find-and-fix-a-bug-in-codebase
 .venv
 __pycache__/
+
+# Virtual environments
+venv/
+.env/
+.env*/
+.venv/
+*.venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Node modules or other heavy directories (if any)
+node_modules/
+# main
