@@ -7,12 +7,23 @@ from __future__ import annotations
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+# codex/add-route-for-2d-plots-visualization
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import uvicorn
+# main
 import pulp
 import cvxpy as cp
 from parser import parse_polynomial, extract_linear_coeffs, extract_quadratic_terms
 import sympy as sp
 import numpy as np
 import re
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
 
 from routes import router
 
@@ -28,6 +39,46 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+#  codex/add-route-for-2d-plots-visualization
+def parse_expression(expr):
+    expr = expr.replace(' ', '')  # Remove all spaces
+    terms = re.findall(r'([+-]?(?:\d*\.)?\d*)([a-zA-Z]\w*(?:\^2)?)', expr)
+    return [(float(coef) if coef and coef not in ['+', '-'] else (1.0 if coef != '-' else -1.0), var) for coef, var in terms if var]
+
+def evaluate_expression(terms, x, y):
+    result = np.zeros_like(x, dtype=float)
+    for coef, var in terms:
+        if '^2' in var:
+            base = var.split('^')[0]
+            if base == 'x':
+                result += coef * x**2
+            elif base == 'y':
+                result += coef * y**2
+        else:
+            if var == 'x':
+                result += coef * x
+            elif var == 'y':
+                result += coef * y
+    return result
+
+def gradient(terms, point):
+    grad = np.zeros(2)
+    x, y = point
+    for coef, var in terms:
+        if '^2' in var:
+            base = var.split('^')[0]
+            if base == 'x':
+                grad[0] += 2 * coef * x
+            elif base == 'y':
+                grad[1] += 2 * coef * y
+        else:
+            if var == 'x':
+                grad[0] += coef
+            elif var == 'y':
+                grad[1] += coef
+    return grad
+
+# main
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -254,6 +305,82 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
 
     return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result}) 
 #  main
+
+@app.get("/visualize", response_class=HTMLResponse)
+async def visualize_get(request: Request):
+    return templates.TemplateResponse("visualize.html", {"request": request})
+
+@app.post("/visualize", response_class=HTMLResponse)
+async def visualize_post(request: Request, objective: str = Form(...), constraints: str = Form(...), animate: str = Form(None)):
+    try:
+        obj_terms = parse_expression(objective)
+
+        x = np.linspace(-5, 5, 200)
+        y = np.linspace(-5, 5, 200)
+        X, Y = np.meshgrid(x, y)
+
+        Z = evaluate_expression(obj_terms, X, Y)
+
+        mask = np.ones_like(X, dtype=bool)
+        for cons in constraints.split('\n'):
+            if cons.strip():
+                if '<=' in cons:
+                    lhs, rhs = cons.split('<=')
+                    lhs_terms = parse_expression(lhs)
+                    lhs_val = evaluate_expression(lhs_terms, X, Y)
+                    mask &= lhs_val <= float(rhs.strip())
+                elif '>=' in cons:
+                    lhs, rhs = cons.split('>=')
+                    lhs_terms = parse_expression(lhs)
+                    lhs_val = evaluate_expression(lhs_terms, X, Y)
+                    mask &= lhs_val >= float(rhs.strip())
+
+        fig, ax = plt.subplots()
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.contour(X, Y, Z, levels=20, cmap='viridis')
+        ax.contourf(X, Y, mask, levels=[0.5, 1], colors=['#d0f0d0'], alpha=0.3)
+
+        plot_buffer = BytesIO()
+        fig.savefig(plot_buffer, format='png')
+        plt.close(fig)
+        plot_data = base64.b64encode(plot_buffer.getvalue()).decode('utf-8')
+
+        animation_data = None
+        if animate:
+            point = np.array([4.0, 4.0])
+            path = [point.copy()]
+            lr = 0.1
+            for _ in range(30):
+                g = gradient(obj_terms, point)
+                point = point - lr * g
+                path.append(point.copy())
+
+            fig_anim, ax_anim = plt.subplots()
+            ax_anim.contour(X, Y, Z, levels=20, cmap='viridis')
+            ax_anim.contourf(X, Y, mask, levels=[0.5, 1], colors=['#d0f0d0'], alpha=0.3)
+            path = np.array(path)
+            ax_anim.plot(path[:,0], path[:,1], marker='o', color='red')
+            anim_buffer = BytesIO()
+            fig_anim.savefig(anim_buffer, format='png')
+            plt.close(fig_anim)
+            animation_data = base64.b64encode(anim_buffer.getvalue()).decode('utf-8')
+
+        result = None
+    except Exception as e:
+        plot_data = None
+        animation_data = None
+        result = f"An error occurred: {str(e)}"
+
+    return templates.TemplateResponse(
+        "visualize.html",
+        {
+            "request": request,
+            "plot_data": plot_data,
+            "animation_data": animation_data,
+            "result": result,
+        },
+    )
 
 if __name__ == "__main__":
     import uvicorn
