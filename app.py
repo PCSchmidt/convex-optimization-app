@@ -1,7 +1,9 @@
 """FastAPI application setup."""
+# codex/find-and-fix-a-bug-in-codebase
 
 from __future__ import annotations
 
+# main
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -128,6 +130,36 @@ async def quadratic_program_get(request: Request):
 @app.post("/quadratic_program", response_class=HTMLResponse)
 async def quadratic_program_post(request: Request, objective: str = Form(...), constraints: str = Form(...)):
     try:
+# codex/find-and-fix-a-bug-in-codebase
+        # Parse objective function
+        obj_terms = parse_expression(objective)
+        variables = {}
+        quad_coeffs = {}
+        linear_coeffs = {}
+        cross_terms = []
+
+        for coef, term in obj_terms:
+            if '^2' in term:
+                var_name = term.split('^')[0]
+                if var_name not in variables:
+                    variables[var_name] = cp.Variable()
+                quad_coeffs[var_name] = quad_coeffs.get(var_name, 0) + coef
+            elif len(term) == 2 and term.isalpha():
+                var1, var2 = term[0], term[1]
+                if var1 not in variables:
+                    variables[var1] = cp.Variable()
+                if var2 not in variables:
+                    variables[var2] = cp.Variable()
+                cross_terms.append((coef, var1, var2))
+            else:
+                if term not in variables:
+                    variables[term] = cp.Variable()
+                linear_coeffs[term] = linear_coeffs.get(term, 0) + coef
+
+        # Construct objective function
+        objective_expr = sum(coef * variables[var]**2 for var, coef in quad_coeffs.items())
+        objective_expr += sum(coef * variables[var] for var, coef in linear_coeffs.items())
+        objective_expr += sum(coef * variables[v1] * variables[v2] for coef, v1, v2 in cross_terms)
         lines = [c.strip() for c in constraints.split("\n") if c.strip()]
 
         obj_syms, obj_poly = parse_polynomial(objective)
@@ -169,6 +201,7 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
             var_names.update(str(s) for s in parse_polynomial(lhs)[0])
 
         variables = {name: cp.Variable(name=name) for name in var_names}
+# main
 
         constraints_list = []
         for name, (lb, ub) in bounds.items():
