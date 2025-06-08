@@ -1,9 +1,17 @@
+"""FastAPI application setup."""
+# codex/find-and-fix-a-bug-in-codebase
+
+from __future__ import annotations
+
+# main
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+# codex/add-route-for-2d-plots-visualization
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
+# main
 import pulp
 import cvxpy as cp
 from parser import parse_polynomial, extract_linear_coeffs, extract_quadratic_terms
@@ -17,16 +25,19 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
 
-app = FastAPI()
+from routes import router
+
 templates = Jinja2Templates(directory="templates")
 
-class LinearProgramInput(BaseModel):
-    objective: str
-    constraints: str
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    application = FastAPI()
+    application.include_router(router)
+    return application
 
-class QuadraticProgramInput(BaseModel):
-    objective: str
-    constraints: str
+
+app = create_app()
+
 
 #  codex/add-route-for-2d-plots-visualization
 def parse_expression(expr):
@@ -71,10 +82,6 @@ def gradient(terms, point):
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
-@app.get("/linear_program", response_class=HTMLResponse)
-async def linear_program_get(request: Request):
-    return templates.TemplateResponse("linear_program.html", {"request": request})
 
 @app.post("/linear_program", response_class=HTMLResponse)
 async def linear_program_post(request: Request, objective: str = Form(...), constraints: str = Form(...)):
@@ -134,6 +141,12 @@ async def linear_program_post(request: Request, objective: str = Form(...), cons
         # Constraints
         for lhs, op, rhs in parsed_constraints:
             lhs_syms, lhs_poly = parse_polynomial(lhs)
+            # Ensure any variables found in this constraint exist
+            for sym in lhs_syms:
+                name = str(sym)
+                if name not in variables:
+                    lb, ub = bounds.get(name, [None, None])
+                    variables[name] = pulp.LpVariable(name, lowBound=lb, upBound=ub)
             coeffs = extract_linear_coeffs(lhs_poly)
             lhs_expr = pulp.lpSum(coef * variables[var] for var, coef in coeffs.items())
             if op == "<=":
@@ -168,6 +181,36 @@ async def quadratic_program_get(request: Request):
 @app.post("/quadratic_program", response_class=HTMLResponse)
 async def quadratic_program_post(request: Request, objective: str = Form(...), constraints: str = Form(...)):
     try:
+# codex/find-and-fix-a-bug-in-codebase
+        # Parse objective function
+        obj_terms = parse_expression(objective)
+        variables = {}
+        quad_coeffs = {}
+        linear_coeffs = {}
+        cross_terms = []
+
+        for coef, term in obj_terms:
+            if '^2' in term:
+                var_name = term.split('^')[0]
+                if var_name not in variables:
+                    variables[var_name] = cp.Variable()
+                quad_coeffs[var_name] = quad_coeffs.get(var_name, 0) + coef
+            elif len(term) == 2 and term.isalpha():
+                var1, var2 = term[0], term[1]
+                if var1 not in variables:
+                    variables[var1] = cp.Variable()
+                if var2 not in variables:
+                    variables[var2] = cp.Variable()
+                cross_terms.append((coef, var1, var2))
+            else:
+                if term not in variables:
+                    variables[term] = cp.Variable()
+                linear_coeffs[term] = linear_coeffs.get(term, 0) + coef
+
+        # Construct objective function
+        objective_expr = sum(coef * variables[var]**2 for var, coef in quad_coeffs.items())
+        objective_expr += sum(coef * variables[var] for var, coef in linear_coeffs.items())
+        objective_expr += sum(coef * variables[v1] * variables[v2] for coef, v1, v2 in cross_terms)
         lines = [c.strip() for c in constraints.split("\n") if c.strip()]
 
         obj_syms, obj_poly = parse_polynomial(objective)
@@ -209,6 +252,7 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
             var_names.update(str(s) for s in parse_polynomial(lhs)[0])
 
         variables = {name: cp.Variable(name=name) for name in var_names}
+# main
 
         constraints_list = []
         for name, (lb, ub) in bounds.items():
@@ -259,7 +303,8 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
     except Exception as e:
         result = f"An error occurred: {str(e)}"
 
-    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result})
+    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result}) 
+#  main
 
 @app.get("/visualize", response_class=HTMLResponse)
 async def visualize_get(request: Request):
@@ -338,4 +383,6 @@ async def visualize_post(request: Request, objective: str = Form(...), constrain
     )
 
 if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
