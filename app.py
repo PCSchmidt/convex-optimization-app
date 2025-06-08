@@ -1,3 +1,6 @@
+# codex/create-solvers-module-and-refactor-routes
+"""FastAPI application setup."""
+=======
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -10,24 +13,30 @@ import sympy as sp
 import numpy as np
 import re
 
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+# main
 
-class LinearProgramInput(BaseModel):
-    objective: str
-    constraints: str
+from __future__ import annotations
 
-class QuadraticProgramInput(BaseModel):
-    objective: str
-    constraints: str
+from fastapi import FastAPI
+
+from routes import router
+
+#  codex/create-solvers-module-and-refactor-routes
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    application = FastAPI()
+    application.include_router(router)
+    return application
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+# main
 
-@app.get("/linear_program", response_class=HTMLResponse)
-async def linear_program_get(request: Request):
-    return templates.TemplateResponse("linear_program.html", {"request": request})
+
+# codex/create-solvers-module-and-refactor-routes
+app = create_app()
 
 @app.post("/linear_program", response_class=HTMLResponse)
 async def linear_program_post(request: Request, objective: str = Form(...), constraints: str = Form(...)):
@@ -212,7 +221,10 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
     except Exception as e:
         result = f"An error occurred: {str(e)}"
 
-    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result})
+    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result}) 
+#  main
 
 if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
