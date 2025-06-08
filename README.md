@@ -58,12 +58,14 @@ The solver utilizes the CVXPY library to solve the quadratic program, offering:
 
 **Example Input**
 ```text
-Objective: 2x^2 + 3y^2 + xy + 4x + 5y
+Objective: 2x^2 + 3y^2 + 4x + 5y
 Constraints:
 x + y <= 10
 x >= 0
 y >= 0
 ```
+
+Cross terms in the objective function (e.g., `xy`) are currently unsupported.
 
 ### 3. Educational Content
 
