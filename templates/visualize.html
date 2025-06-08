@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualization - Convex Optimization App</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1, h2 { color: #333; }
+        form { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        input[type="submit"] { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        input[type="submit"]:hover { background-color: #45a049; }
+        #plot { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Visualization</h1>
+    <form action="/visualize" method="post">
+        <label for="objective">Objective Function:</label>
+        <input type="text" id="objective" name="objective" required placeholder="e.g., 3x + 2y">
+
+        <label for="constraints">Constraints (one per line):</label>
+        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0"></textarea>
+
+        <label><input type="checkbox" name="animate" value="true"> Animate Gradient Descent</label>
+
+        <input type="submit" value="Visualize">
+    </form>
+
+    {% if plot_data %}
+    <div id="plot">
+        <h2>Visualization:</h2>
+        <img src="data:image/png;base64,{{ plot_data }}" alt="Visualization Plot">
+    </div>
+    {% endif %}
+
+    {% if animation_data %}
+    <div id="animation">
+        <h2>Algorithm Progress:</h2>
+        <img src="data:image/gif;base64,{{ animation_data }}" alt="Algorithm Animation">
+    </div>
+    {% endif %}
+
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>

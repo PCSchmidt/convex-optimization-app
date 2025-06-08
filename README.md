@@ -65,7 +65,13 @@ x >= 0
 y >= 0
 ```
 
-### 3. Educational Content
+### 3. Visualization Tool
+
+The visualization tool generates 2D plots of the feasible region and contour lines for small two-variable problems. You can optionally animate gradient descent to illustrate convergence.
+
+Navigate to `/visualize` to try it out.
+
+### 4. Educational Content
 
 The app provides educational content on:
 - The basics of convex optimization
