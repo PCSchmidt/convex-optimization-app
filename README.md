@@ -114,6 +114,17 @@ This project requires **Python 3.11**.
 
 6. Open a web browser and go to `http://localhost:8000`.
 
+## Deployment
+
+To build and run the Docker image:
+
+```bash
+docker build -t convex-optimization-app .
+docker run -p 8000:8000 convex-optimization-app
+```
+
+Then visit `http://localhost:8000` in your browser.
+
 ## Future Enhancements
 
 We plan to expand the Convex Optimization App with the following features:
