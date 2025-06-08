@@ -151,6 +151,16 @@ We plan to expand the Convex Optimization App with the following features:
 The app currently provides command-line style input forms and basic textual output.
 Interactive visualizations and advanced solver options are still under development.
 
+## Running Tests
+
+This project uses `pytest` for its test suite. After installing the dependencies, run:
+
+```bash
+pip install pytest
+pytest
+```
+
+
 ## Contributing
 
 We welcome contributions to the Convex Optimization App! Whether you're fixing bugs, improving documentation, or proposing new features, your efforts are appreciated. Please see our CONTRIBUTING.md file for guidelines on how to submit your contributions.
