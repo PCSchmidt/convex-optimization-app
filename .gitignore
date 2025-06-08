@@ -1,3 +1,18 @@
+# Environment variables and secrets
 .env
 .sesskey
-.venv
+
+# Virtual environments
+venv/
+.env/
+.env*/
+.venv/
+*.venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Node modules or other heavy directories (if any)
+node_modules/
