@@ -27,6 +27,7 @@ packaging==24.1
 pillow==10.4.0
 plotly==5.18.0
 PuLP==2.7.0
+pulp==2.7.0
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
