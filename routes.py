@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, Request, Query
+from fastapi import APIRouter, Form, Request, Query, HTTPException
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 from fastapi.templating import Jinja2Templates
 
 from solvers import solve_lp, solve_qp, solve_sdp, solve_conic, solve_geometric
@@ -17,6 +18,21 @@ from visualize import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+
+class SolveRequest(BaseModel):
+    """Request schema for optimization solvers."""
+
+    objective: str
+    constraints: str
+
+
+class SolveResponse(BaseModel):
+    """Response schema for optimization results."""
+
+    status: str
+    objective_value: float | None = None
+    variables: dict[str, float] | None = None
 
 
 def load_problems() -> list[dict]:
@@ -98,6 +114,15 @@ async def linear_program_post(
     )
 
 
+@router.post("/api/linear_program", response_model=SolveResponse)
+async def api_linear_program(data: SolveRequest) -> SolveResponse:
+    """JSON API endpoint for the linear programming solver."""
+    try:
+        return SolveResponse(**solve_lp(data.objective, data.constraints, return_dict=True))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.get("/quadratic_program", response_class=HTMLResponse)
 async def quadratic_program_get(
     request: Request,
@@ -133,6 +158,15 @@ async def quadratic_program_post(
         "quadratic_program.html",
         {"request": request, "result": result, "plot_html": plot_html},
     )
+
+
+@router.post("/api/quadratic_program", response_model=SolveResponse)
+async def api_quadratic_program(data: SolveRequest) -> SolveResponse:
+    """JSON API endpoint for the quadratic programming solver."""
+    try:
+        return SolveResponse(**solve_qp(data.objective, data.constraints, return_dict=True))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/semidefinite_program", response_class=HTMLResponse)

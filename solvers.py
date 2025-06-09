@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional, Union
 
 import cvxpy as cp
 import pulp
@@ -26,7 +26,12 @@ def parse_expression(expr: str) -> List[Tuple[float, str]]:
     ]
 
 
-def solve_lp(objective: str, constraints: str) -> str:
+def solve_lp(
+    objective: str,
+    constraints: str,
+    *,
+    return_dict: bool = False,
+) -> str | Dict[str, Any]:
     """Solve a linear program using PuLP.
 
     Args:
@@ -34,7 +39,8 @@ def solve_lp(objective: str, constraints: str) -> str:
         constraints: Newline separated constraint expressions.
 
     Returns:
-        Human readable string describing solver status and variable values.
+        Human readable string describing solver status and variable values or a
+        structured dictionary when ``return_dict`` is True.
     """
     prob = pulp.LpProblem("Linear Program", pulp.LpMinimize)
 
@@ -77,16 +83,32 @@ def solve_lp(objective: str, constraints: str) -> str:
 
     status = pulp.LpStatus[prob.status]
     if status == "Optimal":
+        objective_value = pulp.value(prob.objective)
+        variables = {var.name: var.varValue for var in prob.variables()}
         result = f"Status: {status}\n"
-        for var in prob.variables():
-            result += f"{var.name} = {var.varValue}\n"
-        result += f"Objective value: {pulp.value(prob.objective)}"
+        for name, val in variables.items():
+            result += f"{name} = {val}\n"
+        result += f"Objective value: {objective_value}"
     else:
+        objective_value = None
+        variables = None
         result = f"Status: {status}"
+
+    if return_dict:
+        return {
+            "status": status,
+            "objective_value": objective_value,
+            "variables": variables,
+        }
     return result
 
 
-def solve_qp(objective: str, constraints: str) -> str:
+def solve_qp(
+    objective: str,
+    constraints: str,
+    *,
+    return_dict: bool = False,
+) -> str | Dict[str, Any]:
     """Solve a quadratic program using CVXPY.
 
     Args:
@@ -94,7 +116,8 @@ def solve_qp(objective: str, constraints: str) -> str:
         constraints: Newline separated constraint expressions.
 
     Returns:
-        Human readable string describing solver status and solution values.
+        Human readable string describing solver status and solution values or a
+        structured dictionary when ``return_dict`` is True.
     """
     obj_terms = parse_expression(objective)
     variables: Dict[str, cp.Variable] = {}
@@ -136,12 +159,23 @@ def solve_qp(objective: str, constraints: str) -> str:
     prob.solve()
 
     if prob.status == cp.OPTIMAL:
+        objective_value = float(prob.value)
+        variables_val = {name: float(var.value) for name, var in variables.items()}
         result = f"Status: {prob.status}\n"
-        for var_name, var in variables.items():
-            result += f"{var_name} = {var.value}\n"
-        result += f"Objective value: {prob.value}"
+        for name, val in variables_val.items():
+            result += f"{name} = {val}\n"
+        result += f"Objective value: {objective_value}"
     else:
+        objective_value = None
+        variables_val = None
         result = f"Status: {prob.status}"
+
+    if return_dict:
+        return {
+            "status": prob.status,
+            "objective_value": objective_value,
+            "variables": variables_val,
+        }
     return result
 
 

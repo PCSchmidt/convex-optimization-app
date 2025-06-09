@@ -137,6 +137,35 @@ docker run -p 8000:8000 convex-optimization-app
 
 Then visit `http://localhost:8000` in your browser.
 
+## API Usage
+
+The application provides JSON endpoints for programmatic access to the solvers.
+Requests should be sent with a JSON body matching the schemas below.
+
+### Example
+
+Solve a linear program:
+
+```bash
+curl -X POST http://localhost:8000/api/linear_program \
+  -H "Content-Type: application/json" \
+  -d '{"objective":"3x + 2y","constraints":"x + y <= 10\nx >= 0\ny >= 0"}'
+```
+
+The response will be a JSON object containing the solver status, objective value,
+and a mapping of variable names to their optimal values:
+
+```json
+{
+  "status": "Optimal",
+  "objective_value": 26.0,
+  "variables": {
+    "x": 0.0,
+    "y": 10.0
+  }
+}
+```
+
 ## Future Enhancements
 
 We plan to expand the Convex Optimization App with the following features:
