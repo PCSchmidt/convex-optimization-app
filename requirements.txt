@@ -9,7 +9,6 @@ cvxpy==1.5.3
 cycler==0.12.1
 ecos==2.0.14
 fastcore==1.7.8
-fastlite==0.0.11
 fonttools==4.53.1
 h11==0.14.0
 httpcore==1.0.5
@@ -30,7 +29,6 @@ PuLP==2.7.0
 pyparsing==3.1.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
-python-fasthtml==0.6.2
 python-multipart==0.0.9
 PyYAML==6.0.2
 qdldl==0.1.7.post4
