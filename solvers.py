@@ -4,7 +4,10 @@ from typing import Dict, List, Tuple
 
 import cvxpy as cp
 import pulp
+import numpy as np
 import re
+
+from parser import parse_matrix, parse_vector, parse_posynomial
 
 
 def parse_expression(expr: str) -> List[Tuple[float, str]]:
@@ -136,6 +139,129 @@ def solve_qp(objective: str, constraints: str) -> str:
         result = f"Status: {prob.status}\n"
         for var_name, var in variables.items():
             result += f"{var_name} = {var.value}\n"
+        result += f"Objective value: {prob.value}"
+    else:
+        result = f"Status: {prob.status}"
+    return result
+
+
+def solve_sdp(objective: str, constraints: str) -> str:
+    """Solve a small semidefinite program.
+
+    Parameters in ``objective`` and ``constraints`` should be provided as matrix
+    strings using comma separated values with ``;`` separating rows.  Each
+    constraint line is parsed as ``A <= b`` or ``A >= b`` meaning
+    ``trace(A @ X) <= b`` etc.
+    """
+
+    C = parse_matrix(objective)
+    n = C.shape[0]
+    X = cp.Variable((n, n), PSD=True)
+
+    constr: List[cp.Constraint] = []
+    for line in constraints.splitlines():
+        if not line.strip():
+            continue
+        if "<=" in line:
+            A_str, b_str = line.split("<=")
+            A = parse_matrix(A_str)
+            constr.append(cp.trace(A @ X) <= float(b_str.strip()))
+        elif ">=" in line:
+            A_str, b_str = line.split(">=")
+            A = parse_matrix(A_str)
+            constr.append(cp.trace(A @ X) >= float(b_str.strip()))
+        elif "==" in line:
+            A_str, b_str = line.split("==")
+            A = parse_matrix(A_str)
+            constr.append(cp.trace(A @ X) == float(b_str.strip()))
+
+    prob = cp.Problem(cp.Minimize(cp.trace(C @ X)), constr)
+    prob.solve(solver=cp.SCS)
+
+    if prob.status == cp.OPTIMAL:
+        result = f"Status: {prob.status}\n"
+        result += f"X = {X.value}\n"
+        result += f"Objective value: {prob.value}"
+    else:
+        result = f"Status: {prob.status}"
+    return result
+
+
+def solve_conic(objective: str, constraints: str) -> str:
+    """Solve a basic conic program using second-order cone constraints."""
+
+    c = parse_vector(objective)
+    n = len(c)
+    x = cp.Variable(n)
+
+    constr: List[cp.Constraint] = []
+    for line in constraints.splitlines():
+        if not line.strip():
+            continue
+        if line.startswith("soc:"):
+            # Format: soc:A|b|c -> norm(A@x + b) <= c
+            _, rest = line.split(":", 1)
+            A_str, b_str, c_str = rest.split("|")
+            A = parse_matrix(A_str)
+            b = parse_vector(b_str)
+            t = float(c_str)
+            constr.append(cp.norm(A @ x + b) <= t)
+        elif "<=" in line:
+            a_str, b_val = line.split("<=")
+            a = parse_vector(a_str)
+            constr.append(a @ x <= float(b_val.strip()))
+        elif ">=" in line:
+            a_str, b_val = line.split(">=")
+            a = parse_vector(a_str)
+            constr.append(a @ x >= float(b_val.strip()))
+
+    prob = cp.Problem(cp.Minimize(c @ x), constr)
+    prob.solve(solver=cp.SCS)
+
+    if prob.status == cp.OPTIMAL:
+        result = f"Status: {prob.status}\n"
+        result += "\n".join(f"x{i} = {val}" for i, val in enumerate(x.value))
+        result += f"\nObjective value: {prob.value}"
+    else:
+        result = f"Status: {prob.status}"
+    return result
+
+
+def solve_geometric(objective: str, constraints: str) -> str:
+    """Solve a geometric program using CVXPY."""
+
+    var_names = set(re.findall(r"[a-zA-Z]\w*", objective))
+    for line in constraints.splitlines():
+        var_names.update(re.findall(r"[a-zA-Z]\w*", line))
+
+    variables = {name: cp.Variable(pos=True) for name in var_names}
+
+    objective_expr = parse_posynomial(objective, variables)
+
+    constr: List[cp.Constraint] = []
+    for line in constraints.splitlines():
+        if not line.strip():
+            continue
+        if "<=" in line:
+            lhs, rhs = line.split("<=")
+            lhs_expr = parse_posynomial(lhs, variables)
+            constr.append(lhs_expr <= float(rhs.strip()))
+        elif ">=" in line:
+            lhs, rhs = line.split(">=")
+            lhs_expr = parse_posynomial(lhs, variables)
+            constr.append(lhs_expr >= float(rhs.strip()))
+        elif "==" in line:
+            lhs, rhs = line.split("==")
+            lhs_expr = parse_posynomial(lhs, variables)
+            constr.append(lhs_expr == float(rhs.strip()))
+
+    prob = cp.Problem(cp.Minimize(objective_expr), constr)
+    prob.solve(gp=True)
+
+    if prob.status == cp.OPTIMAL:
+        result = f"Status: {prob.status}\n"
+        for name, var in variables.items():
+            result += f"{name} = {var.value}\n"
         result += f"Objective value: {prob.value}"
     else:
         result = f"Status: {prob.status}"
