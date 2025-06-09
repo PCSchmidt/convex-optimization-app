@@ -27,10 +27,10 @@
 
     <form action="/conic_program" method="post">
         <label for="objective">Objective Coefficients (comma separated):</label>
-        <input type="text" id="objective" name="objective" required placeholder="e.g., 1,2,3">
+        <input type="text" id="objective" name="objective" required placeholder="e.g., 1,2,3" value="{{ objective or '' }}">
 
         <label for="constraints">Constraints (one per line):</label>
-        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., 1,0,0 <= 5\nsoc:1,0;0,1|0,0|1"></textarea>
+        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., 1,0,0 <= 5\nsoc:1,0;0,1|0,0|1">{{ constraints or '' }}</textarea>
 
         <input type="submit" value="Solve">
     </form>
