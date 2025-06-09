@@ -8,8 +8,6 @@ from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 # codex/add-route-for-2d-plots-visualization
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 import uvicorn
 # main
 import pulp
@@ -18,7 +16,6 @@ from parser import parse_polynomial, extract_linear_coeffs, extract_quadratic_te
 import sympy as sp
 import numpy as np
 import re
-import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
