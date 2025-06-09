@@ -23,6 +23,7 @@ def test_api_linear_program():
     response = client.post("/api/linear_program", json=payload)
     assert response.status_code == 200
     data = response.json()
+    assert data.get("status") == "ok"
     assert "result" in data
 
 
@@ -34,4 +35,5 @@ def test_api_quadratic_program():
     response = client.post("/api/quadratic_program", json=payload)
     assert response.status_code == 200
     data = response.json()
+    assert data.get("status") == "ok"
     assert "result" in data
