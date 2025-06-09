@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark Results</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Benchmark Results</h1>
+    {% if results %}
+    <table>
+        <tr>
+            <th>Problem</th>
+            <th>Type</th>
+            <th>Solver</th>
+            <th>Runtime (s)</th>
+            <th>Iterations</th>
+        </tr>
+        {% for r in results %}
+        <tr>
+            <td>{{ r.problem }}</td>
+            <td>{{ r.type }}</td>
+            <td>{{ r.solver }}</td>
+            <td>{{ '%.4f' % r.runtime }}</td>
+            <td>{{ r.iterations if r.iterations is not none else 'N/A' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No results available.</p>
+    {% endif %}
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>

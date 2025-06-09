@@ -194,6 +194,18 @@ pip install pytest
 pytest
 ```
 
+## Benchmarking
+
+The `benchmark.py` script runs all sample problems with multiple solvers
+and records their runtime. Execute:
+
+```bash
+python benchmark.py --output results.csv
+```
+
+This writes the benchmark results to `results.csv`. Omitting `--output`
+prints a CSV table to the terminal instead.
+
 
 ## Contributing
 

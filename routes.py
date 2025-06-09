@@ -484,3 +484,14 @@ async def gradient_descent_post(
         "gradient_descent.html",
         {"request": request, "plot_html": plot_html, "result": result},
     )
+
+
+@router.get("/benchmark", response_class=HTMLResponse)
+async def benchmark_results(request: Request) -> HTMLResponse:
+    """Run benchmarks and display the results."""
+    from benchmark import run_benchmarks
+
+    results = run_benchmarks(return_results=True)
+    return templates.TemplateResponse(
+        "benchmark.html", {"request": request, "results": results}
+    )
