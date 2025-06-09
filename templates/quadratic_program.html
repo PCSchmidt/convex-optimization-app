@@ -19,7 +19,7 @@
 </head>
 <body>
     <h1>Quadratic Programming Solver</h1>
-    
+
     <section id="explanation">
         <h2>What is Quadratic Programming?</h2>
         <p>Quadratic programming (QP) is a type of convex optimization problem where the objective function is quadratic and the constraints are linear. It's an extension of linear programming that allows for more complex relationships in the objective function while maintaining the simplicity of linear constraints.</p>
@@ -36,7 +36,7 @@
         <label for="objective">Objective Function (quadratic terms followed by linear terms):</label>
         <!-- Cross terms like xy are not yet supported by the parser -->
         <input type="text" id="objective" name="objective" required placeholder="e.g., 2x^2 + 3y^2 + 4x + 5y" value="{{ objective or '' }}">
-        
+
         <label for="constraints">Constraints (one per line):</label>
         <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0">{{ constraints or '' }}</textarea>
 

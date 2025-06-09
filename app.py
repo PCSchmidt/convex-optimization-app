@@ -307,7 +307,7 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
     except Exception as e:
         result = f"An error occurred: {str(e)}"
 
-    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result}) 
+    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result})
 #  main
 
 @app.get("/visualize", response_class=HTMLResponse)
