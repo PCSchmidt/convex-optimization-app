@@ -194,7 +194,12 @@ Cross terms in quadratic objectives (e.g., `xy`) are now supported by the parser
 
 ## Running Tests
 
+- codex/align-readme-with-github-workflow
+This project uses `pytest` for its test suite. After installing the dependencies,
+run the tests with the same command used in the GitHub workflow:
+
 This project uses `pytest` for its test suite. After installing the dependencies, run the tests from the repository root:
+- main
 
 ```bash
 pytest -q
