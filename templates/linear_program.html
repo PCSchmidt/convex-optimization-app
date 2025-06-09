@@ -34,10 +34,10 @@
 
     <form action="/linear_program" method="post">
         <label for="objective">Objective Function:</label>
-        <input type="text" id="objective" name="objective" required placeholder="e.g., 3x + 2y">
+        <input type="text" id="objective" name="objective" required placeholder="e.g., 3x + 2y" value="{{ objective or '' }}">
         
         <label for="constraints">Constraints (one per line):</label>
-        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0"></textarea>
+        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0">{{ constraints or '' }}</textarea>
         
         <input type="submit" value="Solve">
     </form>

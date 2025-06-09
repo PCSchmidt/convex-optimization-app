@@ -27,10 +27,10 @@
 
     <form action="/geometric_program" method="post">
         <label for="objective">Objective Function:</label>
-        <input type="text" id="objective" name="objective" required placeholder="e.g., x^0.5 * y^0.5">
+        <input type="text" id="objective" name="objective" required placeholder="e.g., x^0.5 * y^0.5" value="{{ objective or '' }}">
 
         <label for="constraints">Constraints (one per line):</label>
-        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x * y <= 1"></textarea>
+        <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x * y <= 1">{{ constraints or '' }}</textarea>
 
         <input type="submit" value="Solve">
     </form>

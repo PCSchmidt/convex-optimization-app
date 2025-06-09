@@ -1,0 +1,36 @@
+- name: Simple LP
+  type: linear_program
+  description: "Minimize 3x + 2y with basic constraints."
+  objective: "3x + 2y"
+  constraints:
+    - "x + y <= 4"
+    - "x >= 0"
+    - "y >= 0"
+- name: Quadratic Example
+  type: quadratic_program
+  description: "Minimize x^2 + y^2 + x subject to linear constraints."
+  objective: "x^2 + y^2 + x"
+  constraints:
+    - "x + y >= 1"
+    - "x >= 0"
+    - "y >= 0"
+- name: Simple SDP
+  type: semidefinite_program
+  description: "Minimize trace(CX) subject to a single constraint."
+  objective: "1,0;0,1"
+  constraints:
+    - "1,0;0,1 >= 1"
+- name: Conic Example
+  type: conic_program
+  description: "Second-order cone constraint with linear objective."
+  objective: "1,1"
+  constraints:
+    - "soc:1,0;0,1|0,0|1"
+- name: Geometric Example
+  type: geometric_program
+  description: "Simple geometric program."
+  objective: "x*y"
+  constraints:
+    - "x*y >= 1"
+    - "x >= 1"
+    - "y >= 1"

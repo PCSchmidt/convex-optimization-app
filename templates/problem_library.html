@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problem Library</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1, h2 { color: #333; }
+        .problem-list { list-style: none; padding: 0; }
+        .problem-list li { margin-bottom: 8px; }
+        .problem-list a { text-decoration: none; background: #f0f0f0; padding: 6px 10px; border-radius: 4px; display: inline-block; }
+        .problem-list a:hover { background: #e0e0e0; }
+        form { background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Problem Library</h1>
+    <ul class="problem-list">
+        {% for p in problems %}
+        <li><a href="/problems?problem={{ p.name | urlencode }}">{{ p.name }}</a></li>
+        {% endfor %}
+    </ul>
+
+    {% if selected %}
+    <h2>{{ selected.name }}</h2>
+    <p>{{ selected.description }}</p>
+    <form action="/{{ selected.type }}" method="get">
+        <input type="hidden" name="objective" value="{{ selected.objective }}">
+        <input type="hidden" name="constraints" value="{{ '\n'.join(selected.constraints) if selected.constraints }}">
+        <input type="submit" value="Load Problem">
+    </form>
+    {% endif %}
+
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>

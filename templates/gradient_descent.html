@@ -21,7 +21,7 @@
     <h1>Gradient Descent Animation</h1>
     <form action="/gradient_descent" method="post">
         <label for="objective">Objective Function (quadratic):</label>
-        <input type="text" id="objective" name="objective" required placeholder="e.g., 2x^2 + y^2 + 4x + 5y">
+        <input type="text" id="objective" name="objective" required placeholder="e.g., 2x^2 + y^2 + 4x + 5y" value="{{ objective or '' }}">
         <input type="submit" value="Animate">
     </form>
 
