@@ -70,11 +70,21 @@ async def linear_program_get(
     request: Request,
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
+    method: str | None = Query(default=None),
+    max_iter: int | None = Query(default=None),
+    tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
     """Display the linear programming input form."""
     return templates.TemplateResponse(
         "linear_program.html",
-        {"request": request, "objective": objective, "constraints": constraints},
+        {
+            "request": request,
+            "objective": objective,
+            "constraints": constraints,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+        },
     )
 
 
@@ -83,10 +93,19 @@ async def linear_program_post(
     request: Request,
     objective: str = Form(...),
     constraints: str = Form(...),
+    method: str | None = Form(default=None),
+    max_iter: int | None = Form(default=None),
+    tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided linear program and return the result."""
     try:
-        result = solve_lp(objective, constraints)
+        result = solve_lp(
+            objective,
+            constraints,
+            method=method,
+            max_iter=max_iter,
+            tolerance=tolerance,
+        )
         fig = plot_linear_program(objective, constraints)
         plot_html = pio.to_html(fig, include_plotlyjs="cdn")
     except Exception as exc:  # noqa: BLE001
@@ -94,7 +113,14 @@ async def linear_program_post(
         plot_html = None
     return templates.TemplateResponse(
         "linear_program.html",
-        {"request": request, "result": result, "plot_html": plot_html},
+        {
+            "request": request,
+            "result": result,
+            "plot_html": plot_html,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+        },
     )
 
 
@@ -103,6 +129,9 @@ async def quadratic_program_get(
     request: Request,
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
+    method: str | None = Query(default=None),
+    max_iter: int | None = Query(default=None),
+    tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
     """Display the quadratic programming input form."""
     return templates.TemplateResponse(
@@ -111,6 +140,9 @@ async def quadratic_program_get(
             "request": request,
             "objective": objective,
             "constraints": constraints,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
         },
     )
 
@@ -120,10 +152,19 @@ async def quadratic_program_post(
     request: Request,
     objective: str = Form(...),
     constraints: str = Form(...),
+    method: str | None = Form(default=None),
+    max_iter: int | None = Form(default=None),
+    tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided quadratic program and return the result."""
     try:
-        result = solve_qp(objective, constraints)
+        result = solve_qp(
+            objective,
+            constraints,
+            method=method,
+            max_iter=max_iter,
+            tolerance=tolerance,
+        )
         fig = plot_quadratic_program(objective)
         plot_html = pio.to_html(fig, include_plotlyjs="cdn")
     except Exception as exc:  # noqa: BLE001
@@ -131,7 +172,14 @@ async def quadratic_program_post(
         plot_html = None
     return templates.TemplateResponse(
         "quadratic_program.html",
-        {"request": request, "result": result, "plot_html": plot_html},
+        {
+            "request": request,
+            "result": result,
+            "plot_html": plot_html,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+        },
     )
 
 
@@ -140,6 +188,9 @@ async def sdp_get(
     request: Request,
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
+    method: str | None = Query(default=None),
+    max_iter: int | None = Query(default=None),
+    tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
     """Display the semidefinite programming input form."""
     return templates.TemplateResponse(
@@ -148,6 +199,9 @@ async def sdp_get(
             "request": request,
             "objective": objective,
             "constraints": constraints,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
         },
     )
 
@@ -157,14 +211,30 @@ async def sdp_post(
     request: Request,
     objective: str = Form(...),
     constraints: str = Form(...),
+    method: str | None = Form(default=None),
+    max_iter: int | None = Form(default=None),
+    tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided semidefinite program and return the result."""
     try:
-        result = solve_sdp(objective, constraints)
+        result = solve_sdp(
+            objective,
+            constraints,
+            method=method,
+            max_iter=max_iter,
+            tolerance=tolerance,
+        )
     except Exception as exc:  # noqa: BLE001
         result = f"An error occurred: {exc}"
     return templates.TemplateResponse(
-        "semidefinite_program.html", {"request": request, "result": result}
+        "semidefinite_program.html",
+        {
+            "request": request,
+            "result": result,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+        },
     )
 
 
@@ -173,6 +243,9 @@ async def conic_get(
     request: Request,
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
+    method: str | None = Query(default=None),
+    max_iter: int | None = Query(default=None),
+    tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
     """Display the conic programming input form."""
     return templates.TemplateResponse(
@@ -181,6 +254,9 @@ async def conic_get(
             "request": request,
             "objective": objective,
             "constraints": constraints,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
         },
     )
 
@@ -190,14 +266,30 @@ async def conic_post(
     request: Request,
     objective: str = Form(...),
     constraints: str = Form(...),
+    method: str | None = Form(default=None),
+    max_iter: int | None = Form(default=None),
+    tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided conic program and return the result."""
     try:
-        result = solve_conic(objective, constraints)
+        result = solve_conic(
+            objective,
+            constraints,
+            method=method,
+            max_iter=max_iter,
+            tolerance=tolerance,
+        )
     except Exception as exc:  # noqa: BLE001
         result = f"An error occurred: {exc}"
     return templates.TemplateResponse(
-        "conic_program.html", {"request": request, "result": result}
+        "conic_program.html",
+        {
+            "request": request,
+            "result": result,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+        }
     )
 
 
@@ -206,6 +298,9 @@ async def gp_get(
     request: Request,
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
+    method: str | None = Query(default=None),
+    max_iter: int | None = Query(default=None),
+    tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
     """Display the geometric programming input form."""
     return templates.TemplateResponse(
@@ -214,6 +309,9 @@ async def gp_get(
             "request": request,
             "objective": objective,
             "constraints": constraints,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
         },
     )
 
@@ -223,14 +321,30 @@ async def gp_post(
     request: Request,
     objective: str = Form(...),
     constraints: str = Form(...),
+    method: str | None = Form(default=None),
+    max_iter: int | None = Form(default=None),
+    tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided geometric program and return the result."""
     try:
-        result = solve_geometric(objective, constraints)
+        result = solve_geometric(
+            objective,
+            constraints,
+            method=method,
+            max_iter=max_iter,
+            tolerance=tolerance,
+        )
     except Exception as exc:  # noqa: BLE001
         result = f"An error occurred: {exc}"
     return templates.TemplateResponse(
-        "geometric_program.html", {"request": request, "result": result}
+        "geometric_program.html",
+        {
+            "request": request,
+            "result": result,
+            "method": method,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+        },
     )
 
 

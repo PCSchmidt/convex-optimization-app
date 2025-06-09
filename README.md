@@ -65,6 +65,16 @@ x >= 0
 y >= 0
 ```
 
+### Solver Options
+
+Each solver accepts optional parameters:
+
+- **method**: choose the backend algorithm (e.g. `cbc` for LP, `ECOS` or `SCS` for convex programs).
+- **max_iter**: limit the number of iterations the solver will run.
+- **tolerance**: stopping tolerance passed to the solver.
+
+If an unsupported method is supplied, the application will return an error.
+
 <!-- codex/add-route-for-2d-plots-visualization -->
 ### 3. Visualization Tool
 
