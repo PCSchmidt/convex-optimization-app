@@ -1,4 +1,3 @@
-import pytest
 from solvers import parse_expression
 
 def test_positive_negative_coefficients():

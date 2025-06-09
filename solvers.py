@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 import cvxpy as cp
 import pulp
-import numpy as np
 import re
 
 from parser import parse_matrix, parse_vector, parse_posynomial
