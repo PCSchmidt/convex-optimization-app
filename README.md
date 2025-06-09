@@ -84,7 +84,7 @@ Navigate to `/visualize` to try it out.
 
 ### 4. Educational Content
 
-Cross terms in the objective function (e.g., `xy`) are currently unsupported.
+Cross terms in quadratic objectives (e.g., `xy`) are now supported.
 
 ### 3. Educational Content
 <!-- main -->
@@ -191,7 +191,7 @@ This project uses `pytest` for its test suite. After installing the dependencies
 
 ```bash
 pip install pytest
-pytest
+python -m pytest -q
 ```
 
 ## Benchmarking
