@@ -5,6 +5,9 @@ from __future__ import annotations
 import re
 from typing import Dict, Tuple, List
 
+import cvxpy as cp
+import numpy as np
+
 import sympy as sp
 from sympy.parsing.sympy_parser import (
     parse_expr,
@@ -64,3 +67,30 @@ def extract_quadratic_terms(poly: sp.Poly) -> Tuple[Dict[Tuple[str, str], float]
         else:
             raise ValueError("Only quadratic expressions are supported")
     return quad, lin
+
+
+def parse_matrix(text: str) -> np.ndarray:
+    """Parse a semicolon-separated matrix string into a numpy array.
+
+    Each row in ``text`` should be separated by ``;`` and values within a row
+    should be comma separated, for example ``"1,0;0,1"`` for the 2x2 identity
+    matrix.
+    """
+    rows = [row.strip() for row in text.strip().split(";") if row.strip()]
+    return np.array([[float(v) for v in row.split(",") if v] for row in rows])
+
+
+def parse_vector(text: str) -> np.ndarray:
+    """Parse a comma separated vector string into a numpy array."""
+    return np.array([float(v) for v in text.strip().split(",") if v])
+
+
+def parse_posynomial(expr: str, variables: Dict[str, cp.Variable]) -> cp.Expression:
+    """Parse a (po)nomial expression string using CVXPY variables.
+
+    The expression may contain ``^`` for exponentiation and products using ``*``.
+    Variables present in ``variables`` can be used directly. The resulting
+    expression is created with ``eval`` in a restricted namespace.
+    """
+    expr_py = expr.replace("^", "**")
+    return eval(expr_py, {"__builtins__": {}}, variables)
