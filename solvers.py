@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-# codex/add-json-endpoints-with-fastapi
+from typing import Any, Dict, List, Tuple, Optional
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+        method: Optional name of a PuLP solver to use.
+        max_iter: Optional solver iteration limit.
+        tolerance: Optional tolerance for solver termination.
 from typing import Any, Dict, List, Tuple
 from typing import Dict, List, Tuple, Optional
 from typing import Dict, List, Tuple
@@ -82,6 +88,12 @@ def solve_lp(
             prob += (
                 pulp.lpSum(coef * variables[var] for coef, var in lhs_terms)
                 <= float(rhs.strip())
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+        method: Optional solver name to pass to CVXPY.
+        max_iter: Optional solver iteration limit.
+        tolerance: Optional solver tolerance.
             )
         elif ">=" in constraint:
             lhs, rhs = constraint.split(">=")
