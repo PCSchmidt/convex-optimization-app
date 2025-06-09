@@ -39,7 +39,16 @@
         
         <label for="constraints">Constraints (one per line):</label>
         <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0">{{ constraints or '' }}</textarea>
-        
+
+        <label for="method">Method (optional):</label>
+        <input type="text" id="method" name="method" placeholder="e.g., ECOS" value="{{ method or '' }}">
+
+        <label for="max_iter">Max Iterations (optional):</label>
+        <input type="number" id="max_iter" name="max_iter" value="{{ max_iter or '' }}">
+
+        <label for="tolerance">Tolerance (optional):</label>
+        <input type="number" step="any" id="tolerance" name="tolerance" value="{{ tolerance or '' }}">
+
         <input type="submit" value="Solve">
     </form>
 
