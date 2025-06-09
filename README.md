@@ -76,17 +76,28 @@ Each solver accepts optional parameters:
 If an unsupported method is supplied, the application will return an error.
 
 <!-- codex/add-route-for-2d-plots-visualization -->
-### 3. Visualization Tool
+### 3. Semidefinite Programming Solver
+
+The SDP solver handles problems with matrix variables constrained to be positive semidefinite. Input the objective matrix and constraints using comma-separated values.
+
+### 4. Conic Programming Solver
+
+Use the conic solver for second-order cone problems. Constraints prefixed with `soc:` define cone constraints.
+
+### 5. Geometric Programming Solver
+
+The GP solver accepts posynomial objectives and constraints, allowing you to solve log-convex programs.
+
+### 6. Visualization Tool
 
 The visualization tool generates 2D plots of the feasible region and contour lines for small two-variable problems. You can optionally animate gradient descent to illustrate convergence.
 
 Navigate to `/visualize` to try it out.
 
-### 4. Educational Content
+### 7. Educational Content
 
-Cross terms in quadratic objectives (e.g., `xy`) are now supported.
+Cross terms in quadratic objectives (e.g., `xy`) are not yet supported.
 
-### 3. Educational Content
 <!-- main -->
 
 The app provides educational content on:
@@ -152,31 +163,26 @@ Then visit `http://localhost:8000` in your browser.
 
 We plan to expand the Convex Optimization App with the following features:
 
-1. Support for more optimization problem types:
-   - Semidefinite Programming (SDP)
-   - Conic Optimization
-   - Geometric Programming
-
-2. Interactive visualizations:
+1. Interactive visualizations:
    - 2D and 3D plots of feasible regions and optimal solutions
    - Step-by-step algorithm visualizations
 
-3. Problem library:
+2. Problem library:
    - A collection of common optimization problems for practice
    - Real-world case studies
 
-4. Advanced solver options:
+3. Advanced solver options:
    - Choice of different algorithms
    - Custom stopping criteria and solver parameters
 
-5. Tutorial system:
+4. Tutorial system:
    - Guided walkthroughs for beginners
    - Quizzes and exercises to test understanding
 
-6. API access:
+5. API access:
    - Allowing programmatic access to the solvers for integration with other applications
 
-7. Performance benchmarking:
+6. Performance benchmarking:
    - Comparison of different solvers and algorithms
    - Scalability tests for large-scale problems
 
@@ -187,11 +193,10 @@ Interactive visualizations and advanced solver options are still under developme
 
 ## Running Tests
 
-This project uses `pytest` for its test suite. After installing the dependencies, run:
+This project uses `pytest` for its test suite. After installing the dependencies, run the tests from the repository root:
 
 ```bash
-pip install pytest
-python -m pytest -q
+pytest -q
 ```
 
 ## Benchmarking
