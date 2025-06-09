@@ -50,6 +50,13 @@
     </div>
     {% endif %}
 
+    {% if plot_html %}
+    <div id="plot">
+        <h2>Visualization:</h2>
+        {{ plot_html | safe }}
+    </div>
+    {% endif %}
+
     <p><a href="/">Back to Home</a></p>
 </body>
 </html>

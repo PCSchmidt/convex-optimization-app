@@ -5,6 +5,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from solvers import solve_lp, solve_qp, solve_sdp, solve_conic, solve_geometric
+import plotly.io as pio
+from visualize import (
+    gradient_descent_animation,
+    plot_linear_program,
+    plot_quadratic_program,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -31,10 +37,14 @@ async def linear_program_post(
     """Solve the provided linear program and return the result."""
     try:
         result = solve_lp(objective, constraints)
+        fig = plot_linear_program(objective, constraints)
+        plot_html = pio.to_html(fig, include_plotlyjs="cdn")
     except Exception as exc:  # noqa: BLE001
         result = f"An error occurred: {exc}"
+        plot_html = None
     return templates.TemplateResponse(
-        "linear_program.html", {"request": request, "result": result}
+        "linear_program.html",
+        {"request": request, "result": result, "plot_html": plot_html},
     )
 
 
@@ -55,10 +65,14 @@ async def quadratic_program_post(
     """Solve the provided quadratic program and return the result."""
     try:
         result = solve_qp(objective, constraints)
+        fig = plot_quadratic_program(objective)
+        plot_html = pio.to_html(fig, include_plotlyjs="cdn")
     except Exception as exc:  # noqa: BLE001
         result = f"An error occurred: {exc}"
+        plot_html = None
     return templates.TemplateResponse(
-        "quadratic_program.html", {"request": request, "result": result}
+        "quadratic_program.html",
+        {"request": request, "result": result, "plot_html": plot_html},
     )
 
 
@@ -125,4 +139,29 @@ async def gp_post(
         result = f"An error occurred: {exc}"
     return templates.TemplateResponse(
         "geometric_program.html", {"request": request, "result": result}
+    )
+
+
+@router.get("/gradient_descent", response_class=HTMLResponse)
+async def gradient_descent_get(request: Request) -> HTMLResponse:
+    """Display the gradient descent animation form."""
+    return templates.TemplateResponse("gradient_descent.html", {"request": request})
+
+
+@router.post("/gradient_descent", response_class=HTMLResponse)
+async def gradient_descent_post(
+    request: Request,
+    objective: str = Form(...),
+) -> HTMLResponse:
+    """Generate an animation of gradient descent on the given objective."""
+    try:
+        fig = gradient_descent_animation(objective)
+        plot_html = pio.to_html(fig, include_plotlyjs="cdn")
+        result = None
+    except Exception as exc:  # noqa: BLE001
+        plot_html = None
+        result = f"An error occurred: {exc}"
+    return templates.TemplateResponse(
+        "gradient_descent.html",
+        {"request": request, "plot_html": plot_html, "result": result},
     )
