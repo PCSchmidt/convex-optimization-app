@@ -65,6 +65,16 @@ x >= 0
 y >= 0
 ```
 
+### Solver Options
+
+Each solver accepts optional parameters:
+
+- **method**: choose the backend algorithm (e.g. `cbc` for LP, `ECOS` or `SCS` for convex programs).
+- **max_iter**: limit the number of iterations the solver will run.
+- **tolerance**: stopping tolerance passed to the solver.
+
+If an unsupported method is supplied, the application will return an error.
+
 <!-- codex/add-route-for-2d-plots-visualization -->
 ### 3. Visualization Tool
 
@@ -88,11 +98,12 @@ The app provides educational content on:
 ## How to Use the App
 
 1. Navigate to the home page for an introduction to Convex Optimization.
-2. Choose between the Linear Programming or Quadratic Programming solver.
-3. Input your problem:
+2. Follow the interactive tutorial at `/tutorial/step/1` for a guided walkthrough.
+3. Choose between the Linear Programming or Quadratic Programming solver.
+4. Input your problem:
    - For LP: Enter the coefficients of your objective function and constraints.
    - For QP: Provide the quadratic and linear terms of your objective function and linear constraints.
-4. Click "Solve" to get the optimal solution and interpretation.
+5. Click "Solve" to get the optimal solution and interpretation.
 
 ## Installation and Setup
 

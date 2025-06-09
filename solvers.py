@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+# codex/add-json-endpoints-with-fastapi
 from typing import Any, Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional
+
+# main
 
 import cvxpy as cp
 import pulp
@@ -29,9 +33,16 @@ def parse_expression(expr: str) -> List[Tuple[float, str]]:
 def solve_lp(
     objective: str,
     constraints: str,
+# codex/add-json-endpoints-with-fastapi
     *,
     return_dict: bool = False,
 ) -> str | Dict[str, Any]:
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+) -> str:
+
+#   main
     """Solve a linear program using PuLP.
 
     Args:
@@ -79,7 +90,17 @@ def solve_lp(
                 >= float(rhs.strip())
             )
 
-    prob.solve()
+    # Determine solver
+    solver_name = (method or "cbc").lower()
+    solvers = {"cbc": pulp.PULP_CBC_CMD, "glpk": pulp.GLPK_CMD}
+    if solver_name not in solvers:
+        raise ValueError(f"Unsupported method '{method}'")
+    solver_kwargs = {"msg": False}
+    if max_iter is not None:
+        solver_kwargs["timeLimit"] = int(max_iter)
+    if tolerance is not None:
+        solver_kwargs["gapRel"] = float(tolerance)
+    prob.solve(solvers[solver_name](**solver_kwargs))
 
     status = pulp.LpStatus[prob.status]
     if status == "Optimal":
@@ -106,9 +127,16 @@ def solve_lp(
 def solve_qp(
     objective: str,
     constraints: str,
+# codex/add-json-endpoints-with-fastapi
     *,
     return_dict: bool = False,
 ) -> str | Dict[str, Any]:
+# 
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+) -> str:
+# main
     """Solve a quadratic program using CVXPY.
 
     Args:
@@ -156,7 +184,28 @@ def solve_qp(
             constraints_list.append(lhs_expr >= float(rhs.strip()))
 
     prob = cp.Problem(cp.Minimize(objective_expr), constraints_list)
-    prob.solve()
+
+    solver_name = (method or "ECOS").upper()
+    valid_methods = {"ECOS", "OSQP", "SCS"}
+    if solver_name not in valid_methods:
+        raise ValueError(f"Unsupported method '{method}'")
+    solve_kwargs = {}
+    if max_iter is not None:
+        if solver_name == "OSQP":
+            solve_kwargs["max_iter"] = int(max_iter)
+        else:
+            solve_kwargs["max_iters"] = int(max_iter)
+    if tolerance is not None:
+        if solver_name == "SCS":
+            solve_kwargs["eps"] = float(tolerance)
+        elif solver_name == "OSQP":
+            solve_kwargs["eps_abs"] = float(tolerance)
+            solve_kwargs["eps_rel"] = float(tolerance)
+        else:
+            solve_kwargs["abstol"] = float(tolerance)
+            solve_kwargs["reltol"] = float(tolerance)
+
+    prob.solve(solver=solver_name, **solve_kwargs)
 
     if prob.status == cp.OPTIMAL:
         objective_value = float(prob.value)
@@ -179,7 +228,13 @@ def solve_qp(
     return result
 
 
-def solve_sdp(objective: str, constraints: str) -> str:
+def solve_sdp(
+    objective: str,
+    constraints: str,
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+) -> str:
     """Solve a small semidefinite program.
 
     Parameters in ``objective`` and ``constraints`` should be provided as matrix
@@ -210,7 +265,16 @@ def solve_sdp(objective: str, constraints: str) -> str:
             constr.append(cp.trace(A @ X) == float(b_str.strip()))
 
     prob = cp.Problem(cp.Minimize(cp.trace(C @ X)), constr)
-    prob.solve(solver=cp.SCS)
+
+    solver_name = (method or "SCS").upper()
+    if solver_name not in {"SCS"}:
+        raise ValueError(f"Unsupported method '{method}'")
+    solve_kwargs = {}
+    if max_iter is not None:
+        solve_kwargs["max_iters"] = int(max_iter)
+    if tolerance is not None:
+        solve_kwargs["eps"] = float(tolerance)
+    prob.solve(solver=solver_name, **solve_kwargs)
 
     if prob.status == cp.OPTIMAL:
         result = f"Status: {prob.status}\n"
@@ -221,7 +285,13 @@ def solve_sdp(objective: str, constraints: str) -> str:
     return result
 
 
-def solve_conic(objective: str, constraints: str) -> str:
+def solve_conic(
+    objective: str,
+    constraints: str,
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+) -> str:
     """Solve a basic conic program using second-order cone constraints."""
 
     c = parse_vector(objective)
@@ -250,7 +320,16 @@ def solve_conic(objective: str, constraints: str) -> str:
             constr.append(a @ x >= float(b_val.strip()))
 
     prob = cp.Problem(cp.Minimize(c @ x), constr)
-    prob.solve(solver=cp.SCS)
+
+    solver_name = (method or "SCS").upper()
+    if solver_name not in {"SCS"}:
+        raise ValueError(f"Unsupported method '{method}'")
+    solve_kwargs = {}
+    if max_iter is not None:
+        solve_kwargs["max_iters"] = int(max_iter)
+    if tolerance is not None:
+        solve_kwargs["eps"] = float(tolerance)
+    prob.solve(solver=solver_name, **solve_kwargs)
 
     if prob.status == cp.OPTIMAL:
         result = f"Status: {prob.status}\n"
@@ -261,7 +340,13 @@ def solve_conic(objective: str, constraints: str) -> str:
     return result
 
 
-def solve_geometric(objective: str, constraints: str) -> str:
+def solve_geometric(
+    objective: str,
+    constraints: str,
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+) -> str:
     """Solve a geometric program using CVXPY."""
 
     var_names = set(re.findall(r"[a-zA-Z]\w*", objective))
@@ -290,7 +375,21 @@ def solve_geometric(objective: str, constraints: str) -> str:
             constr.append(lhs_expr == float(rhs.strip()))
 
     prob = cp.Problem(cp.Minimize(objective_expr), constr)
-    prob.solve(gp=True)
+
+    solver_name = (method or "ECOS").upper()
+    if solver_name not in {"ECOS", "SCS"}:
+        raise ValueError(f"Unsupported method '{method}'")
+    solve_kwargs = {}
+    if max_iter is not None:
+        solve_kwargs["max_iters"] = int(max_iter)
+    if tolerance is not None:
+        if solver_name == "SCS":
+            solve_kwargs["eps"] = float(tolerance)
+        else:
+            solve_kwargs["abstol"] = float(tolerance)
+            solve_kwargs["reltol"] = float(tolerance)
+
+    prob.solve(gp=True, solver=solver_name, **solve_kwargs)
 
     if prob.status == cp.OPTIMAL:
         result = f"Status: {prob.status}\n"
