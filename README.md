@@ -191,7 +191,7 @@ This project uses `pytest` for its test suite. After installing the dependencies
 
 ```bash
 pip install pytest
-pytest
+python -m pytest -q
 ```
 
 ## Benchmarking
