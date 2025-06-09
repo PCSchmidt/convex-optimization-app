@@ -1,6 +1,6 @@
-pytest.importorskip("cvxpy")
+import os
+import sys
 
-# codex/create-test-client-cases-for-fastapi
 import os
 import sys
 import pytest
