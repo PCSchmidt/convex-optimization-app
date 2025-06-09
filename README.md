@@ -65,7 +65,7 @@ x >= 0
 y >= 0
 ```
 
-### Solver Options
+Cross terms in the objective function (e.g., `xy`) are supported.
 
 Each solver accepts optional parameters:
 
@@ -183,8 +183,7 @@ We plan to expand the Convex Optimization App with the following features:
 
 1. Support for more optimization problem types:
    - Semidefinite Programming (SDP)
-   - Conic Optimization
-   - Geometric Programming
+python -m pytest -q
 
 2. Interactive visualizations:
    - 2D and 3D plots of feasible regions and optimal solutions

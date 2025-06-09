@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-# codex/add-json-endpoints-with-fastapi
-from typing import Any, Dict, List, Tuple, Optional, Union
+from typing import Any, Dict, List, Tuple
 from typing import Dict, List, Tuple, Optional
 
 # main
