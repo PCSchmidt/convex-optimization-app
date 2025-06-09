@@ -187,7 +187,8 @@ Interactive visualizations and advanced solver options are still under developme
 
 ## Running Tests
 
-This project uses `pytest` for its test suite. After installing the dependencies, run:
+This project uses `pytest` for its test suite. After installing the dependencies,
+run the tests with the same command used in the GitHub workflow:
 
 ```bash
 pip install pytest
