@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Form, Request, Query
+from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -17,6 +18,14 @@ from visualize import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+
+class ProgramRequest(BaseModel):
+    objective: str
+    constraints: str
+    method: str | None = None
+    max_iter: int | None = None
+    tolerance: float | None = None
 
 # Prefilled example problems used in the tutorial steps
 TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
@@ -231,6 +240,24 @@ async def linear_program_post(
     )
 
 
+@router.post("/api/linear_program")
+async def api_linear_program(req: ProgramRequest) -> dict:
+    """Solve a linear program and return JSON results."""
+    try:
+        result = solve_lp(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
+
+
 @router.get("/quadratic_program", response_class=HTMLResponse)
 async def quadratic_program_get(
     request: Request,
@@ -288,6 +315,24 @@ async def quadratic_program_post(
             "tolerance": tolerance,
         },
     )
+
+
+@router.post("/api/quadratic_program")
+async def api_quadratic_program(req: ProgramRequest) -> dict:
+    """Solve a quadratic program and return JSON results."""
+    try:
+        result = solve_qp(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
 
 
 @router.get("/semidefinite_program", response_class=HTMLResponse)

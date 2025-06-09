@@ -190,6 +190,7 @@ We plan to expand the Convex Optimization App with the following features:
 
 The app currently provides command-line style input forms and basic textual output.
 Interactive visualizations and advanced solver options are still under development.
+Cross terms in quadratic objectives (e.g., `xy`) are now supported by the parser.
 
 ## Running Tests
 
