@@ -4,6 +4,7 @@ import pytest
 
 pytest.importorskip("httpx")
 pytest.importorskip("cvxpy")
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
