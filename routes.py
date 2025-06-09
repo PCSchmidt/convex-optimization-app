@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+# codex/add-json-endpoints-with-fastapi
 from fastapi import APIRouter, Form, Request, Query, HTTPException
+from fastapi import APIRouter, Form, Request, Query
+from pydantic import BaseModel
+# main
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from fastapi.templating import Jinja2Templates
@@ -18,6 +22,14 @@ from visualize import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+
+class ProgramRequest(BaseModel):
+    objective: str
+    constraints: str
+    method: str | None = None
+    max_iter: int | None = None
+    tolerance: float | None = None
 
 # Prefilled example problems used in the tutorial steps
 TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
@@ -247,6 +259,7 @@ async def linear_program_post(
     )
 
 
+# codex/add-json-endpoints-with-fastapi
 @router.post("/api/linear_program", response_model=SolveResponse)
 async def api_linear_program(data: SolveRequest) -> SolveResponse:
     """JSON API endpoint for the linear programming solver."""
@@ -254,6 +267,24 @@ async def api_linear_program(data: SolveRequest) -> SolveResponse:
         return SolveResponse(**solve_lp(data.objective, data.constraints, return_dict=True))
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc))
+
+@router.post("/api/linear_program")
+async def api_linear_program(req: ProgramRequest) -> dict:
+    """Solve a linear program and return JSON results."""
+    try:
+        result = solve_lp(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
+# main
 
 
 @router.get("/quadratic_program", response_class=HTMLResponse)
@@ -315,6 +346,7 @@ async def quadratic_program_post(
     )
 
 
+# codex/add-json-endpoints-with-fastapi
 @router.post("/api/quadratic_program", response_model=SolveResponse)
 async def api_quadratic_program(data: SolveRequest) -> SolveResponse:
     """JSON API endpoint for the quadratic programming solver."""
@@ -322,6 +354,24 @@ async def api_quadratic_program(data: SolveRequest) -> SolveResponse:
         return SolveResponse(**solve_qp(data.objective, data.constraints, return_dict=True))
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc))
+
+@router.post("/api/quadratic_program")
+async def api_quadratic_program(req: ProgramRequest) -> dict:
+    """Solve a quadratic program and return JSON results."""
+    try:
+        result = solve_qp(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
+# main
 
 
 @router.get("/semidefinite_program", response_class=HTMLResponse)
@@ -517,4 +567,15 @@ async def gradient_descent_post(
     return templates.TemplateResponse(
         "gradient_descent.html",
         {"request": request, "plot_html": plot_html, "result": result},
+    )
+
+
+@router.get("/benchmark", response_class=HTMLResponse)
+async def benchmark_results(request: Request) -> HTMLResponse:
+    """Run benchmarks and display the results."""
+    from benchmark import run_benchmarks
+
+    results = run_benchmarks(return_results=True)
+    return templates.TemplateResponse(
+        "benchmark.html", {"request": request, "results": results}
     )

@@ -1,3 +1,6 @@
+import pytest
+pytest.importorskip("cvxpy")
+
 import re
 import os
 import sys
