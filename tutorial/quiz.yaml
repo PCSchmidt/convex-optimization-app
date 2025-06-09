@@ -1,0 +1,7 @@
+questions:
+  - question: "What property guarantees that a local optimum is also a global optimum in convex optimization?"
+    options:
+      - "Convex objective and feasible set"
+      - "Non-linear constraints"
+      - "Random initialization"
+    answer: "Convex objective and feasible set"
