@@ -5,6 +5,7 @@ from __future__ import annotations
 
 # main
 from fastapi import FastAPI, Request, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 # codex/add-route-for-2d-plots-visualization
@@ -29,6 +30,12 @@ templates = Jinja2Templates(directory="templates")
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     application = FastAPI()
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     application.include_router(router)
     return application
 
@@ -300,7 +307,7 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
     except Exception as e:
         result = f"An error occurred: {str(e)}"
 
-    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result}) 
+    return templates.TemplateResponse("quadratic_program.html", {"request": request, "result": result})
 #  main
 
 @app.get("/visualize", response_class=HTMLResponse)

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+# codex/add-json-endpoints-with-fastapi
+from fastapi import APIRouter, Form, Request, Query, HTTPException
 from fastapi import APIRouter, Form, Request, Query
 from pydantic import BaseModel
+# main
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 from fastapi.templating import Jinja2Templates
 
 from solvers import solve_lp, solve_qp, solve_sdp, solve_conic, solve_geometric
@@ -40,6 +44,21 @@ TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
         "constraints": "x + y >= 1\nx >= 0\ny >= 0",
     },
 }
+
+
+class SolveRequest(BaseModel):
+    """Request schema for optimization solvers."""
+
+    objective: str
+    constraints: str
+
+
+class SolveResponse(BaseModel):
+    """Response schema for optimization results."""
+
+    status: str
+    objective_value: float | None = None
+    variables: dict[str, float] | None = None
 
 
 def load_problems() -> list[dict]:
@@ -240,6 +259,15 @@ async def linear_program_post(
     )
 
 
+# codex/add-json-endpoints-with-fastapi
+@router.post("/api/linear_program", response_model=SolveResponse)
+async def api_linear_program(data: SolveRequest) -> SolveResponse:
+    """JSON API endpoint for the linear programming solver."""
+    try:
+        return SolveResponse(**solve_lp(data.objective, data.constraints, return_dict=True))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
+
 @router.post("/api/linear_program")
 async def api_linear_program(req: ProgramRequest) -> dict:
     """Solve a linear program and return JSON results."""
@@ -256,6 +284,7 @@ async def api_linear_program(req: ProgramRequest) -> dict:
         result = f"An error occurred: {exc}"
         status = "error"
     return {"status": status, "result": result}
+# main
 
 
 @router.get("/quadratic_program", response_class=HTMLResponse)
@@ -317,6 +346,15 @@ async def quadratic_program_post(
     )
 
 
+# codex/add-json-endpoints-with-fastapi
+@router.post("/api/quadratic_program", response_model=SolveResponse)
+async def api_quadratic_program(data: SolveRequest) -> SolveResponse:
+    """JSON API endpoint for the quadratic programming solver."""
+    try:
+        return SolveResponse(**solve_qp(data.objective, data.constraints, return_dict=True))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc))
+
 @router.post("/api/quadratic_program")
 async def api_quadratic_program(req: ProgramRequest) -> dict:
     """Solve a quadratic program and return JSON results."""
@@ -333,6 +371,7 @@ async def api_quadratic_program(req: ProgramRequest) -> dict:
         result = f"An error occurred: {exc}"
         status = "error"
     return {"status": status, "result": result}
+# main
 
 
 @router.get("/semidefinite_program", response_class=HTMLResponse)

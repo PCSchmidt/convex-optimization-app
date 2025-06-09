@@ -1,6 +1,18 @@
 from __future__ import annotations
 
+from typing import Any, Dict, List, Tuple, Optional
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+        method: Optional name of a PuLP solver to use.
+        max_iter: Optional solver iteration limit.
+        tolerance: Optional tolerance for solver termination.
+from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from typing import Dict, List, Tuple
+main
+
+# main
 
 import cvxpy as cp
 import pulp
@@ -28,18 +40,23 @@ def parse_expression(expr: str) -> List[Tuple[float, str]]:
 def solve_lp(
     objective: str,
     constraints: str,
+# codex/add-json-endpoints-with-fastapi
+    *,
+    return_dict: bool = False,
+) -> str | Dict[str, Any]:
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
-) -> str:
-    """Solve a linear program using PuLP.
-
-    Args:
-        objective: Objective function as a string, e.g. ``"3x + 2y"``.
-        constraints: Newline separated constraint expressions.
+            prob += pulp.lpSum(
+                coef * variables[var] for coef, var in lhs_terms
+            ) <= float(rhs.strip())
+            prob += pulp.lpSum(
+                coef * variables[var] for coef, var in lhs_terms
+            ) >= float(rhs.strip())
 
     Returns:
-        Human readable string describing solver status and variable values.
+        Human readable string describing solver status and variable values or a
+        structured dictionary when ``return_dict`` is True.
     """
     prob = pulp.LpProblem("Linear Program", pulp.LpMinimize)
 
@@ -69,6 +86,12 @@ def solve_lp(
             prob += (
                 pulp.lpSum(coef * variables[var] for coef, var in lhs_terms)
                 <= float(rhs.strip())
+    method: Optional[str] = None,
+    max_iter: Optional[int] = None,
+    tolerance: Optional[float] = None,
+        method: Optional solver name to pass to CVXPY.
+        max_iter: Optional solver iteration limit.
+        tolerance: Optional solver tolerance.
             )
         elif ">=" in constraint:
             lhs, rhs = constraint.split(">=")
@@ -92,22 +115,39 @@ def solve_lp(
 
     status = pulp.LpStatus[prob.status]
     if status == "Optimal":
+        objective_value = pulp.value(prob.objective)
+        variables = {var.name: var.varValue for var in prob.variables()}
         result = f"Status: {status}\n"
-        for var in prob.variables():
-            result += f"{var.name} = {var.varValue}\n"
-        result += f"Objective value: {pulp.value(prob.objective)}"
+        for name, val in variables.items():
+            result += f"{name} = {val}\n"
+        result += f"Objective value: {objective_value}"
     else:
+        objective_value = None
+        variables = None
         result = f"Status: {status}"
+
+    if return_dict:
+        return {
+            "status": status,
+            "objective_value": objective_value,
+            "variables": variables,
+        }
     return result
 
 
 def solve_qp(
     objective: str,
     constraints: str,
+# codex/add-json-endpoints-with-fastapi
+    *,
+    return_dict: bool = False,
+) -> str | Dict[str, Any]:
+# 
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
 ) -> str:
+# main
     """Solve a quadratic program using CVXPY.
 
     Args:
@@ -115,7 +155,8 @@ def solve_qp(
         constraints: Newline separated constraint expressions.
 
     Returns:
-        Human readable string describing solver status and solution values.
+        Human readable string describing solver status and solution values or a
+        structured dictionary when ``return_dict`` is True.
     """
     obj_terms = parse_expression(objective)
     variables: Dict[str, cp.Variable] = {}
@@ -178,12 +219,23 @@ def solve_qp(
     prob.solve(solver=solver_name, **solve_kwargs)
 
     if prob.status == cp.OPTIMAL:
+        objective_value = float(prob.value)
+        variables_val = {name: float(var.value) for name, var in variables.items()}
         result = f"Status: {prob.status}\n"
-        for var_name, var in variables.items():
-            result += f"{var_name} = {var.value}\n"
-        result += f"Objective value: {prob.value}"
+        for name, val in variables_val.items():
+            result += f"{name} = {val}\n"
+        result += f"Objective value: {objective_value}"
     else:
+        objective_value = None
+        variables_val = None
         result = f"Status: {prob.status}"
+
+    if return_dict:
+        return {
+            "status": prob.status,
+            "objective_value": objective_value,
+            "variables": variables_val,
+        }
     return result
 
 

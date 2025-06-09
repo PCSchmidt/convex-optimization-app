@@ -65,7 +65,7 @@ x >= 0
 y >= 0
 ```
 
-### Solver Options
+Cross terms in the objective function (e.g., `xy`) are supported.
 
 Each solver accepts optional parameters:
 
@@ -159,11 +159,48 @@ docker run -p 8000:8000 convex-optimization-app
 
 Then visit `http://localhost:8000` in your browser.
 
+## API Usage
+
+The application provides JSON endpoints for programmatic access to the solvers.
+Requests should be sent with a JSON body matching the schemas below.
+
+### Example
+
+Solve a linear program:
+
+```bash
+curl -X POST http://localhost:8000/api/linear_program \
+  -H "Content-Type: application/json" \
+  -d '{"objective":"3x + 2y","constraints":"x + y <= 10\nx >= 0\ny >= 0"}'
+```
+
+The response will be a JSON object containing the solver status, objective value,
+and a mapping of variable names to their optimal values:
+
+```json
+{
+  "status": "Optimal",
+  "objective_value": 26.0,
+  "variables": {
+    "x": 0.0,
+    "y": 10.0
+  }
+}
+```
+
 ## Future Enhancements
 
 We plan to expand the Convex Optimization App with the following features:
 
+- codex/add-json-endpoints-with-fastapi
+1. Support for more optimization problem types:
+   - Semidefinite Programming (SDP)
+python -m pytest -q
+
+2. Interactive visualizations:
+
 1. Interactive visualizations:
+- main
    - 2D and 3D plots of feasible regions and optimal solutions
    - Step-by-step algorithm visualizations
 

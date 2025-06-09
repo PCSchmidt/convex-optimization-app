@@ -19,7 +19,7 @@
 </head>
 <body>
     <h1>Linear Programming Solver</h1>
-    
+
     <section id="explanation">
         <h2>What is Linear Programming?</h2>
         <p>Linear programming (LP) is a method to achieve the best outcome (such as maximum profit or lowest cost) in a mathematical model whose requirements are represented by linear relationships. It is a special case of convex optimization where the objective function is linear and the constraints are linear equalities or inequalities.</p>
@@ -35,7 +35,7 @@
     <form action="/linear_program" method="post">
         <label for="objective">Objective Function:</label>
         <input type="text" id="objective" name="objective" required placeholder="e.g., 3x + 2y" value="{{ objective or '' }}">
-        
+
         <label for="constraints">Constraints (one per line):</label>
         <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0">{{ constraints or '' }}</textarea>
 
