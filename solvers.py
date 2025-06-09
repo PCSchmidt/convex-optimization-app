@@ -47,14 +47,12 @@ def solve_lp(
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
-) -> str:
-
-#   main
-    """Solve a linear program using PuLP.
-
-    Args:
-        objective: Objective function as a string, e.g. ``"3x + 2y"``.
-        constraints: Newline separated constraint expressions.
+            prob += pulp.lpSum(
+                coef * variables[var] for coef, var in lhs_terms
+            ) <= float(rhs.strip())
+            prob += pulp.lpSum(
+                coef * variables[var] for coef, var in lhs_terms
+            ) >= float(rhs.strip())
 
     Returns:
         Human readable string describing solver status and variable values or a
