@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-# main
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 import uvicorn
-# main
 import pulp
 import cvxpy as cp
 from parser import parse_polynomial, extract_linear_coeffs, extract_quadratic_terms
@@ -26,6 +24,7 @@ from visualize import (
 
 from routes import router
 from starlette.middleware.sessions import SessionMiddleware
+from solvers import parse_expression
 
 templates = Jinja2Templates(directory="templates")
 
@@ -38,13 +37,6 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-def parse_expression(expr):
-    expr = expr.replace(' ', '')  # Remove all spaces
-    terms = re.findall(r'([+-]?(?:\d*\.)?\d*)([a-zA-Z]\w*(?:\^2)?)', expr)
-    return [(float(coef) if coef and coef not in ['+', '-'] else (1.0 if coef != '-' else -1.0), var) for coef, var in terms if var]
-
-# main
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -217,8 +209,6 @@ async def quadratic_program_post(request: Request, objective: str = Form(...), c
             var_names.update(str(s) for s in parse_polynomial(lhs)[0])
 
         variables = {name: cp.Variable(name=name) for name in var_names}
-# main
-
         constraints_list = []
         for name, (lb, ub) in bounds.items():
             if lb is not None:

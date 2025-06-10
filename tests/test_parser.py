@@ -2,11 +2,6 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-# main
-# main
 from solvers import parse_expression
 
 def test_positive_negative_coefficients():
