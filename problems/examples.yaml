@@ -34,3 +34,26 @@
     - "x*y >= 1"
     - "x >= 1"
     - "y >= 1"
+- name: Factory Production
+  type: linear_program
+  description: "Maximize profit given resource limits."
+  objective: "-5x - 3y"
+  constraints:
+    - "2x + y <= 100"
+    - "x + y <= 80"
+    - "x >= 0"
+    - "y >= 0"
+- name: Portfolio QP
+  type: quadratic_program
+  description: "Minimize variance with return constraint."
+  objective: "x^2 + y^2"
+  constraints:
+    - "x + y = 1"
+    - "x >= 0"
+    - "y >= 0"
+- name: Cone Portfolio
+  type: conic_program
+  description: "Cone constraint on portfolio weights."
+  objective: "1,2"
+  constraints:
+    - "soc:1,1|0,0|1.5"

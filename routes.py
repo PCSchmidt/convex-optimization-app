@@ -43,24 +43,28 @@ TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
 
 
 def load_problems() -> list[dict]:
-    """Load example problems from the ``problems`` directory."""
-    problems = []
+    """Load example problems from YAML/JSON files under ``problems``."""
+    problems: list[dict] = []
     if not os.path.isdir("problems"):
         return problems
-    for fname in sorted(os.listdir("problems")):
-        path = os.path.join("problems", fname)
-        if fname.endswith((".yaml", ".yml")):
-            with open(path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-        elif fname.endswith(".json"):
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            continue
-        if isinstance(data, list):
-            problems.extend(data)
-        else:
-            problems.append(data)
+
+    for root, _dirs, files in os.walk("problems"):
+        for fname in sorted(files):
+            path = os.path.join(root, fname)
+            if fname.endswith((".yaml", ".yml")):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+            elif fname.endswith(".json"):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                continue
+
+            if isinstance(data, list):
+                problems.extend(data)
+            else:
+                problems.append(data)
+
     return problems
 
 
