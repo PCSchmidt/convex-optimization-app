@@ -34,7 +34,6 @@
 
     <form action="/quadratic_program" method="post">
         <label for="objective">Objective Function (quadratic terms followed by linear terms):</label>
-        <!-- Cross terms like xy are not yet supported by the parser -->
         <input type="text" id="objective" name="objective" required placeholder="e.g., 2x^2 + 3y^2 + 4x + 5y" value="{{ objective or '' }}">
         
         <label for="constraints">Constraints (one per line):</label>
