@@ -26,22 +26,36 @@
         <label for="constraints">Constraints (one per line):</label>
         <textarea id="constraints" name="constraints" rows="5" required placeholder="e.g., x + y <= 10&#10;x >= 0&#10;y >= 0"></textarea>
 
-        <label><input type="checkbox" name="animate" value="true"> Animate Gradient Descent</label>
+        <label for="algorithm">Animation Algorithm:</label>
+        <select id="algorithm" name="algorithm">
+            <option value="">None</option>
+            <option value="gradient_descent">Gradient Descent</option>
+            <option value="interior_point">Interior Point</option>
+            <option value="simplex">Simplex</option>
+            <option value="feasible_region">Feasible Region</option>
+        </select>
 
         <input type="submit" value="Visualize">
     </form>
 
-    {% if plot_data %}
+    {% if plot_html %}
     <div id="plot">
-        <h2>Visualization:</h2>
-        <img src="data:image/png;base64,{{ plot_data }}" alt="Visualization Plot">
+        <h2>Feasible Region:</h2>
+        {{ plot_html | safe }}
     </div>
     {% endif %}
 
-    {% if animation_data %}
+    {% if surface_html %}
+    <div id="surface">
+        <h2>Objective Surface:</h2>
+        {{ surface_html | safe }}
+    </div>
+    {% endif %}
+
+    {% if animation_html %}
     <div id="animation">
         <h2>Algorithm Progress:</h2>
-        <img src="data:image/gif;base64,{{ animation_data }}" alt="Algorithm Animation">
+        {{ animation_html | safe }}
     </div>
     {% endif %}
 

@@ -24,8 +24,24 @@ class ProgramRequest(BaseModel):
     objective: str
     constraints: str
     method: str | None = None
+    algorithm: str | None = None
     max_iter: int | None = None
     tolerance: float | None = None
+
+
+def validate_options(
+    algorithm: str | None,
+    valid: set[str],
+    max_iter: int | None,
+    tolerance: float | None,
+) -> None:
+    """Validate solver options from a request."""
+    if algorithm and algorithm.upper() not in valid:
+        raise ValueError(f"Unsupported method '{algorithm}'")
+    if max_iter is not None and max_iter <= 0:
+        raise ValueError("max_iter must be positive")
+    if tolerance is not None and tolerance <= 0:
+        raise ValueError("tolerance must be positive")
 
 # Prefilled example problems used in the tutorial steps
 TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
@@ -57,24 +73,28 @@ TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
 
 
 def load_problems() -> list[dict]:
-    """Load example problems from the ``problems`` directory."""
-    problems = []
+    """Load example problems from YAML/JSON files under ``problems``."""
+    problems: list[dict] = []
     if not os.path.isdir("problems"):
         return problems
-    for fname in sorted(os.listdir("problems")):
-        path = os.path.join("problems", fname)
-        if fname.endswith((".yaml", ".yml")):
-            with open(path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-        elif fname.endswith(".json"):
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            continue
-        if isinstance(data, list):
-            problems.extend(data)
-        else:
-            problems.append(data)
+
+    for root, _dirs, files in os.walk("problems"):
+        for fname in sorted(files):
+            path = os.path.join(root, fname)
+            if fname.endswith((".yaml", ".yml")):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+            elif fname.endswith(".json"):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                continue
+
+            if isinstance(data, list):
+                problems.extend(data)
+            else:
+                problems.append(data)
+
     return problems
 
 
@@ -228,6 +248,7 @@ async def linear_program_get(
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
     method: str | None = Query(default=None),
+    algorithm: str | None = Query(default=None),
     max_iter: int | None = Query(default=None),
     tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
@@ -239,6 +260,7 @@ async def linear_program_get(
             "objective": objective,
             "constraints": constraints,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -251,15 +273,18 @@ async def linear_program_post(
     objective: str = Form(...),
     constraints: str = Form(...),
     method: str | None = Form(default=None),
+    algorithm: str | None = Form(default=None),
     max_iter: int | None = Form(default=None),
     tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided linear program and return the result."""
     try:
+        validate_options(algorithm, {"cbc", "glpk"}, max_iter, tolerance)
         result = solve_lp(
             objective,
             constraints,
             method=method,
+            algorithm=algorithm,
             max_iter=max_iter,
             tolerance=tolerance,
         )
@@ -275,6 +300,7 @@ async def linear_program_post(
             "result": result,
             "plot_html": plot_html,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -285,10 +311,12 @@ async def linear_program_post(
 async def api_linear_program(req: ProgramRequest) -> dict:
     """Solve a linear program and return JSON results."""
     try:
+        validate_options(req.algorithm, {"cbc", "glpk"}, req.max_iter, req.tolerance)
         result = solve_lp(
             req.objective,
             req.constraints,
             method=req.method,
+            algorithm=req.algorithm,
             max_iter=req.max_iter,
             tolerance=req.tolerance,
         )
@@ -305,6 +333,7 @@ async def quadratic_program_get(
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
     method: str | None = Query(default=None),
+    algorithm: str | None = Query(default=None),
     max_iter: int | None = Query(default=None),
     tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
@@ -316,6 +345,7 @@ async def quadratic_program_get(
             "objective": objective,
             "constraints": constraints,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -328,15 +358,18 @@ async def quadratic_program_post(
     objective: str = Form(...),
     constraints: str = Form(...),
     method: str | None = Form(default=None),
+    algorithm: str | None = Form(default=None),
     max_iter: int | None = Form(default=None),
     tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided quadratic program and return the result."""
     try:
+        validate_options(algorithm, {"ECOS", "OSQP", "SCS"}, max_iter, tolerance)
         result = solve_qp(
             objective,
             constraints,
             method=method,
+            algorithm=algorithm,
             max_iter=max_iter,
             tolerance=tolerance,
         )
@@ -352,6 +385,7 @@ async def quadratic_program_post(
             "result": result,
             "plot_html": plot_html,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -362,10 +396,12 @@ async def quadratic_program_post(
 async def api_quadratic_program(req: ProgramRequest) -> dict:
     """Solve a quadratic program and return JSON results."""
     try:
+        validate_options(req.algorithm, {"ECOS", "OSQP", "SCS"}, req.max_iter, req.tolerance)
         result = solve_qp(
             req.objective,
             req.constraints,
             method=req.method,
+            algorithm=req.algorithm,
             max_iter=req.max_iter,
             tolerance=req.tolerance,
         )
@@ -382,6 +418,7 @@ async def sdp_get(
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
     method: str | None = Query(default=None),
+    algorithm: str | None = Query(default=None),
     max_iter: int | None = Query(default=None),
     tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
@@ -393,6 +430,7 @@ async def sdp_get(
             "objective": objective,
             "constraints": constraints,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -405,15 +443,18 @@ async def sdp_post(
     objective: str = Form(...),
     constraints: str = Form(...),
     method: str | None = Form(default=None),
+    algorithm: str | None = Form(default=None),
     max_iter: int | None = Form(default=None),
     tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided semidefinite program and return the result."""
     try:
+        validate_options(algorithm, {"SCS"}, max_iter, tolerance)
         result = solve_sdp(
             objective,
             constraints,
             method=method,
+            algorithm=algorithm,
             max_iter=max_iter,
             tolerance=tolerance,
         )
@@ -425,6 +466,7 @@ async def sdp_post(
             "request": request,
             "result": result,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -437,6 +479,7 @@ async def conic_get(
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
     method: str | None = Query(default=None),
+    algorithm: str | None = Query(default=None),
     max_iter: int | None = Query(default=None),
     tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
@@ -448,6 +491,7 @@ async def conic_get(
             "objective": objective,
             "constraints": constraints,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -460,15 +504,18 @@ async def conic_post(
     objective: str = Form(...),
     constraints: str = Form(...),
     method: str | None = Form(default=None),
+    algorithm: str | None = Form(default=None),
     max_iter: int | None = Form(default=None),
     tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided conic program and return the result."""
     try:
+        validate_options(algorithm, {"SCS"}, max_iter, tolerance)
         result = solve_conic(
             objective,
             constraints,
             method=method,
+            algorithm=algorithm,
             max_iter=max_iter,
             tolerance=tolerance,
         )
@@ -480,6 +527,7 @@ async def conic_post(
             "request": request,
             "result": result,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         }
@@ -492,6 +540,7 @@ async def gp_get(
     objective: str | None = Query(default=None),
     constraints: str | None = Query(default=None),
     method: str | None = Query(default=None),
+    algorithm: str | None = Query(default=None),
     max_iter: int | None = Query(default=None),
     tolerance: float | None = Query(default=None),
 ) -> HTMLResponse:
@@ -503,6 +552,7 @@ async def gp_get(
             "objective": objective,
             "constraints": constraints,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },
@@ -515,15 +565,18 @@ async def gp_post(
     objective: str = Form(...),
     constraints: str = Form(...),
     method: str | None = Form(default=None),
+    algorithm: str | None = Form(default=None),
     max_iter: int | None = Form(default=None),
     tolerance: float | None = Form(default=None),
 ) -> HTMLResponse:
     """Solve the provided geometric program and return the result."""
     try:
+        validate_options(algorithm, {"ECOS", "SCS"}, max_iter, tolerance)
         result = solve_geometric(
             objective,
             constraints,
             method=method,
+            algorithm=algorithm,
             max_iter=max_iter,
             tolerance=tolerance,
         )
@@ -535,6 +588,7 @@ async def gp_post(
             "request": request,
             "result": result,
             "method": method,
+            "algorithm": algorithm,
             "max_iter": max_iter,
             "tolerance": tolerance,
         },

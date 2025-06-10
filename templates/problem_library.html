@@ -18,7 +18,10 @@
     <h1>Problem Library</h1>
     <ul class="problem-list">
         {% for p in problems %}
-        <li><a href="/problems?problem={{ p.name | urlencode }}">{{ p.name }}</a></li>
+        <li>
+            <a href="/problems?problem={{ p.name | urlencode }}">{{ p.name }}</a>
+            - {{ p.description }}
+        </li>
         {% endfor %}
     </ul>
 
