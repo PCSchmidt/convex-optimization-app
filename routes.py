@@ -473,6 +473,24 @@ async def sdp_post(
     )
 
 
+@router.post("/api/semidefinite_program")
+async def api_semidefinite_program(req: ProgramRequest) -> dict:
+    """Solve a semidefinite program and return JSON results."""
+    try:
+        result = solve_sdp(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
+
+
 @router.get("/conic_program", response_class=HTMLResponse)
 async def conic_get(
     request: Request,
@@ -534,6 +552,24 @@ async def conic_post(
     )
 
 
+@router.post("/api/conic_program")
+async def api_conic_program(req: ProgramRequest) -> dict:
+    """Solve a conic program and return JSON results."""
+    try:
+        result = solve_conic(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
+
+
 @router.get("/geometric_program", response_class=HTMLResponse)
 async def gp_get(
     request: Request,
@@ -593,6 +629,24 @@ async def gp_post(
             "tolerance": tolerance,
         },
     )
+
+
+@router.post("/api/geometric_program")
+async def api_geometric_program(req: ProgramRequest) -> dict:
+    """Solve a geometric program and return JSON results."""
+    try:
+        result = solve_geometric(
+            req.objective,
+            req.constraints,
+            method=req.method,
+            max_iter=req.max_iter,
+            tolerance=req.tolerance,
+        )
+        status = "ok"
+    except Exception as exc:  # noqa: BLE001
+        result = f"An error occurred: {exc}"
+        status = "error"
+    return {"status": status, "result": result}
 
 
 @router.get("/gradient_descent", response_class=HTMLResponse)

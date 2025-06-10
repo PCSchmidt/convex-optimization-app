@@ -115,6 +115,35 @@ The app provides educational content on:
    - For QP: Provide the quadratic and linear terms of your objective function and linear constraints.
 5. Click "Solve" to get the optimal solution and interpretation.
 
+## API Usage
+
+The application exposes solver endpoints that accept JSON payloads. Each request
+returns a response with `status` and `result` fields.
+
+Example request to solve a linear program:
+
+```bash
+curl -X POST http://localhost:8000/api/linear_program \
+     -H 'Content-Type: application/json' \
+     -d '{"objective": "x", "constraints": "x >= 1"}'
+```
+
+Available endpoints:
+
+- `POST /api/linear_program`
+- `POST /api/quadratic_program`
+- `POST /api/semidefinite_program`
+- `POST /api/conic_program`
+- `POST /api/geometric_program`
+
+All endpoints accept the following JSON keys:
+
+- `objective` – objective function or matrix/vector string
+- `constraints` – newline separated constraints
+- `method` *(optional)* – solver backend
+- `max_iter` *(optional)* – iteration limit
+- `tolerance` *(optional)* – solver tolerance
+
 ## Installation and Setup
 
 This project requires **Python 3.11**.
