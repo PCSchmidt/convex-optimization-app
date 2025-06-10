@@ -1,0 +1,10 @@
+- name: Transportation LP
+  type: linear_program
+  description: "Classic transportation example with shipping costs."
+  objective: "4x + 5y + 6z"
+  constraints:
+    - "x + y >= 50"
+    - "y + z >= 60"
+    - "x >= 0"
+    - "y >= 0"
+    - "z >= 0"
