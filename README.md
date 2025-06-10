@@ -149,14 +149,48 @@ This project requires **Python 3.11**.
 
 ## Deployment
 
-To build and run the Docker image:
+### Local Docker
+
+Build and run the Docker image locally:
 
 ```bash
 docker build -t convex-optimization-app .
 docker run -p 8000:8000 convex-optimization-app
 ```
 
-Then visit `http://localhost:8000` in your browser.
+Then visit `http://localhost:8000` in your browser. You can expose a different
+host port by adjusting the `-p` flag:
+
+```bash
+docker run -p 5000:8000 convex-optimization-app
+```
+
+### Hosting Options
+
+The container can be deployed to any service that supports Docker images.
+Below is an example workflow for [Heroku](https://www.heroku.com/) using the
+Heroku CLI:
+
+```bash
+heroku create my-convex-app
+heroku container:push web -a my-convex-app
+heroku container:release web -a my-convex-app
+```
+
+Heroku and similar platforms provide the port for your application through the
+`PORT` environment variable. To run the container with this variable locally you
+can execute:
+
+```bash
+docker run -e PORT=8000 -p 8000:8000 convex-optimization-app \
+    uvicorn app:app --host 0.0.0.0 --port $PORT
+```
+
+Example environment variables:
+
+```text
+PORT=8000
+```
 
 ## Future Enhancements
 
