@@ -38,6 +38,42 @@ def test_api_quadratic_program():
     assert data.get("status") == "ok"
     assert "result" in data
 
+
+def test_api_semidefinite_program():
+    payload = {
+        "objective": "1,0;0,1",
+        "constraints": "1,0;0,1 >= 1",
+    }
+    response = client.post("/api/semidefinite_program", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("status") == "ok"
+    assert "result" in data
+
+
+def test_api_conic_program():
+    payload = {
+        "objective": "1,1",
+        "constraints": "soc:1,0;0,1|0,0|1",
+    }
+    response = client.post("/api/conic_program", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("status") == "ok"
+    assert "result" in data
+
+
+def test_api_geometric_program():
+    payload = {
+        "objective": "x*y",
+        "constraints": "x*y >= 1\nx >= 1\ny >= 1",
+    }
+    response = client.post("/api/geometric_program", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("status") == "ok"
+    assert "result" in data
+
 from app import app as full_app
 full_client = TestClient(full_app)
 
