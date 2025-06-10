@@ -25,12 +25,14 @@ from visualize import (
 )
 
 from routes import router
+from starlette.middleware.sessions import SessionMiddleware
 
 templates = Jinja2Templates(directory="templates")
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     application = FastAPI()
+    application.add_middleware(SessionMiddleware, secret_key="convex-secret")
     application.include_router(router)
     return application
 

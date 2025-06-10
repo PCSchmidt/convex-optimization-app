@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tutorial Step 2 - Quadratic Programming</title>
+    <title>Tutorial Step 4 - Conic Programming</title>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
@@ -18,11 +18,11 @@
     </style>
 </head>
 <body>
-    <h1>Step 2: Quadratic Programming</h1>
+    <h1>Step 4: Conic Programming</h1>
     <p>Step {{ progress }} of {{ total_steps }}</p>
     <p>{{ explanation }}</p>
-    <form action="/tutorial/step/2" method="post">
-        <label for="objective">Objective Function:</label>
+    <form action="/tutorial/step/4" method="post">
+        <label for="objective">Objective Coefficients:</label>
         <input type="text" id="objective" name="objective" required value="{{ objective }}">
         <label for="constraints">Constraints (one per line):</label>
         <textarea id="constraints" name="constraints" rows="5" required>{{ constraints }}</textarea>
