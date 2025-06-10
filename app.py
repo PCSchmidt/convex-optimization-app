@@ -1,5 +1,4 @@
 """FastAPI application setup."""
-# codex/find-and-fix-a-bug-in-codebase
 
 from __future__ import annotations
 
@@ -7,7 +6,6 @@ from __future__ import annotations
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
-# codex/add-route-for-2d-plots-visualization
 import uvicorn
 # main
 import pulp
@@ -35,8 +33,6 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
-
-#  codex/add-route-for-2d-plots-visualization
 def parse_expression(expr):
     expr = expr.replace(' ', '')  # Remove all spaces
     terms = re.findall(r'([+-]?(?:\d*\.)?\d*)([a-zA-Z]\w*(?:\^2)?)', expr)
@@ -178,7 +174,6 @@ async def quadratic_program_get(request: Request):
 @app.post("/quadratic_program", response_class=HTMLResponse)
 async def quadratic_program_post(request: Request, objective: str = Form(...), constraints: str = Form(...)):
     try:
-# codex/find-and-fix-a-bug-in-codebase
         # Parse objective function
         obj_terms = parse_expression(objective)
         variables = {}

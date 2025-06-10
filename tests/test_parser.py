@@ -1,7 +1,6 @@
 import os
 import sys
 
-# codex/review-codebase-for-deployable-app
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))

@@ -1,7 +1,6 @@
 # Environment variables and secrets
 .env
 .sesskey
-# codex/find-and-fix-a-bug-in-codebase
 .venv
 __pycache__/
 
