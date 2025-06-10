@@ -5,3 +5,18 @@ questions:
       - "Non-linear constraints"
       - "Random initialization"
     answer: "Convex objective and feasible set"
+    explanation: "Convexity ensures any local minimum is also global."
+  - question: "Which algorithm is commonly used to solve linear programs?"
+    options:
+      - "Simplex method"
+      - "Gradient descent"
+      - "Newton's method"
+    answer: "Simplex method"
+    explanation: "The simplex method is a standard technique for linear programming."
+  - question: "What does the feasible set represent in an optimization problem?"
+    options:
+      - "All points satisfying the constraints"
+      - "The gradient of the objective function"
+      - "Only the optimal solutions"
+    answer: "All points satisfying the constraints"
+    explanation: "The feasible set contains every point that meets all constraints."

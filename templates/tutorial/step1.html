@@ -19,7 +19,8 @@
 </head>
 <body>
     <h1>Step 1: Linear Programming Basics</h1>
-    <p>This step introduces linear programming, where both the objective function and constraints are linear.</p>
+    <p>Step {{ progress }} of {{ total_steps }}</p>
+    <p>{{ explanation }}</p>
     <form action="/tutorial/step/1" method="post">
         <label for="objective">Objective Function:</label>
         <input type="text" id="objective" name="objective" required value="{{ objective }}">

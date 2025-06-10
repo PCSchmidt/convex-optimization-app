@@ -14,6 +14,7 @@
 </head>
 <body>
     <h1>Quiz</h1>
+    <p>Question {{ index + 1 }} of {{ total }}</p>
     <p>{{ question.question }}</p>
     <form action="/tutorial/quiz" method="post">
         <input type="hidden" name="q" value="{{ index }}">
@@ -27,6 +28,10 @@
             <p><strong>Correct!</strong></p>
         {% else %}
             <p><strong>Incorrect.</strong> Correct answer: {{ question.answer }}</p>
+        {% endif %}
+        <p>{{ question.explanation }}</p>
+        {% if next_index is not none %}
+            <p><a href="/tutorial/quiz?q={{ next_index }}">Next Question</a></p>
         {% endif %}
     {% endif %}
     <p><a href="/">Home</a></p>

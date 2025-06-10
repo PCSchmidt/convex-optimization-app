@@ -155,7 +155,7 @@ def solve_qp(
 
     prob = cp.Problem(cp.Minimize(objective_expr), constraints_list)
 
-    solver_name = (method or "ECOS").upper()
+    solver_name = (method or "SCS").upper()
     valid_methods = {"ECOS", "OSQP", "SCS"}
     if solver_name not in valid_methods:
         raise ValueError(f"Unsupported method '{method}'")
@@ -335,7 +335,7 @@ def solve_geometric(
 
     prob = cp.Problem(cp.Minimize(objective_expr), constr)
 
-    solver_name = (method or "ECOS").upper()
+    solver_name = (method or "SCS").upper()
     if solver_name not in {"ECOS", "SCS"}:
         raise ValueError(f"Unsupported method '{method}'")
     solve_kwargs = {}

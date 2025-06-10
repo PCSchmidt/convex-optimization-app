@@ -33,11 +33,25 @@ TUTORIAL_EXERCISES: dict[int, dict[str, str]] = {
         "type": "linear_program",
         "objective": "3x + 2y",
         "constraints": "x + y <= 4\nx >= 0\ny >= 0",
+        "explanation": "This step introduces linear programming, where both the objective and constraints are linear.",
     },
     2: {
         "type": "quadratic_program",
         "objective": "x^2 + y^2 + x",
         "constraints": "x + y >= 1\nx >= 0\ny >= 0",
+        "explanation": "Here we solve a quadratic program with a convex quadratic objective.",
+    },
+    3: {
+        "type": "semidefinite_program",
+        "objective": "1,0;0,1",
+        "constraints": "1,0;0,1 >= 1",
+        "explanation": "Semidefinite programming optimizes over positive semidefinite matrices.",
+    },
+    4: {
+        "type": "conic_program",
+        "objective": "1,1",
+        "constraints": "soc:1,0;0,1|0,0|1",
+        "explanation": "Conic programming allows cone constraints such as second-order cones.",
     },
 }
 
@@ -110,6 +124,9 @@ async def tutorial_step_get(request: Request, step: int) -> HTMLResponse:
             "request": request,
             "objective": exercise["objective"],
             "constraints": exercise["constraints"],
+            "progress": step,
+            "total_steps": len(TUTORIAL_EXERCISES),
+            "explanation": exercise.get("explanation"),
         },
     )
 
@@ -130,10 +147,17 @@ async def tutorial_step_post(
             result = solve_lp(objective, constraints)
         elif exercise["type"] == "quadratic_program":
             result = solve_qp(objective, constraints)
+        elif exercise["type"] == "semidefinite_program":
+            result = solve_sdp(objective, constraints)
+        elif exercise["type"] == "conic_program":
+            result = solve_conic(objective, constraints)
         else:
             result = "Unsupported exercise"
     except Exception as exc:  # noqa: BLE001
         result = f"An error occurred: {exc}"
+    current = request.session.get("tutorial_progress", 0)
+    if step > current:
+        request.session["tutorial_progress"] = step
     return templates.TemplateResponse(
         f"tutorial/step{step}.html",
         {
@@ -141,20 +165,31 @@ async def tutorial_step_post(
             "objective": objective,
             "constraints": constraints,
             "result": result,
+            "progress": step,
+            "total_steps": len(TUTORIAL_EXERCISES),
+            "explanation": exercise.get("explanation"),
         },
     )
 
 
 @router.get("/tutorial/quiz", response_class=HTMLResponse)
-async def tutorial_quiz_get(request: Request, q: int = Query(0)) -> HTMLResponse:
+async def tutorial_quiz_get(request: Request, q: int = Query(-1)) -> HTMLResponse:
     """Display a quiz question from the tutorial."""
     questions = load_quiz_questions()
+    progress = int(request.session.get("quiz_progress", 0))
+    if q == -1:
+        q = progress
     if q < 0 or q >= len(questions):
         return HTMLResponse("Question not found", status_code=404)
     question = questions[q]
     return templates.TemplateResponse(
         "tutorial/quiz.html",
-        {"request": request, "question": question, "index": q},
+        {
+            "request": request,
+            "question": question,
+            "index": q,
+            "total": len(questions),
+        },
     )
 
 
@@ -168,6 +203,10 @@ async def tutorial_quiz_post(
         return HTMLResponse("Question not found", status_code=404)
     question = questions[q]
     correct = answer.strip() == question.get("answer")
+    progress = int(request.session.get("quiz_progress", 0))
+    if correct and q == progress:
+        request.session["quiz_progress"] = progress + 1
+    next_index = q + 1 if q + 1 < len(questions) else None
     return templates.TemplateResponse(
         "tutorial/quiz.html",
         {
@@ -177,6 +216,8 @@ async def tutorial_quiz_post(
             "answered": True,
             "correct": correct,
             "given": answer,
+            "next_index": next_index,
+            "total": len(questions),
         },
     )
 
