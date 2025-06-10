@@ -47,7 +47,7 @@ def test_visualize_route_generates_plot():
         data={"objective": "x", "constraints": "x >= 0"},
     )
     assert response.status_code == 200
-    assert "data:image/png;base64" in response.text
+    assert "Plotly.newPlot" in response.text
 
 def test_benchmark_route_displays_table():
     response = client.get("/benchmark")

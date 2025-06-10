@@ -14,11 +14,15 @@ from parser import parse_polynomial, extract_linear_coeffs, extract_quadratic_te
 import sympy as sp
 import numpy as np
 import re
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
+import plotly.io as pio
+from visualize import (
+    plot_linear_program,
+    plot_3d_surface,
+    gradient_descent_animation,
+    feasible_region_animation,
+    interior_point_animation,
+    simplex_animation,
+)
 
 from routes import router
 
@@ -37,39 +41,6 @@ def parse_expression(expr):
     expr = expr.replace(' ', '')  # Remove all spaces
     terms = re.findall(r'([+-]?(?:\d*\.)?\d*)([a-zA-Z]\w*(?:\^2)?)', expr)
     return [(float(coef) if coef and coef not in ['+', '-'] else (1.0 if coef != '-' else -1.0), var) for coef, var in terms if var]
-
-def evaluate_expression(terms, x, y):
-    result = np.zeros_like(x, dtype=float)
-    for coef, var in terms:
-        if '^2' in var:
-            base = var.split('^')[0]
-            if base == 'x':
-                result += coef * x**2
-            elif base == 'y':
-                result += coef * y**2
-        else:
-            if var == 'x':
-                result += coef * x
-            elif var == 'y':
-                result += coef * y
-    return result
-
-def gradient(terms, point):
-    grad = np.zeros(2)
-    x, y = point
-    for coef, var in terms:
-        if '^2' in var:
-            base = var.split('^')[0]
-            if base == 'x':
-                grad[0] += 2 * coef * x
-            elif base == 'y':
-                grad[1] += 2 * coef * y
-        else:
-            if var == 'x':
-                grad[0] += coef
-            elif var == 'y':
-                grad[1] += coef
-    return grad
 
 # main
 @app.get("/", response_class=HTMLResponse)
@@ -303,73 +274,48 @@ async def visualize_get(request: Request):
     return templates.TemplateResponse("visualize.html", {"request": request})
 
 @app.post("/visualize", response_class=HTMLResponse)
-async def visualize_post(request: Request, objective: str = Form(...), constraints: str = Form(...), animate: str = Form(None)):
+async def visualize_post(
+    request: Request,
+    objective: str = Form(...),
+    constraints: str = Form(...),
+    algorithm: str | None = Form(default=None),
+):
     try:
-        obj_terms = parse_expression(objective)
+        fig_region = plot_linear_program(objective, constraints)
+        plot_html = pio.to_html(fig_region, include_plotlyjs="cdn")
 
-        x = np.linspace(-5, 5, 200)
-        y = np.linspace(-5, 5, 200)
-        X, Y = np.meshgrid(x, y)
+        surface_fig = plot_3d_surface(objective)
+        surface_html = pio.to_html(surface_fig, include_plotlyjs=False, full_html=False)
 
-        Z = evaluate_expression(obj_terms, X, Y)
+        animation_html = None
+        if algorithm == "gradient_descent":
+            anim_fig = gradient_descent_animation(objective)
+        elif algorithm == "interior_point":
+            anim_fig = interior_point_animation(objective, constraints)
+        elif algorithm == "simplex":
+            anim_fig = simplex_animation(objective, constraints)
+        elif algorithm == "feasible_region":
+            anim_fig = feasible_region_animation(objective, constraints)
+        else:
+            anim_fig = None
 
-        mask = np.ones_like(X, dtype=bool)
-        for cons in constraints.split('\n'):
-            if cons.strip():
-                if '<=' in cons:
-                    lhs, rhs = cons.split('<=')
-                    lhs_terms = parse_expression(lhs)
-                    lhs_val = evaluate_expression(lhs_terms, X, Y)
-                    mask &= lhs_val <= float(rhs.strip())
-                elif '>=' in cons:
-                    lhs, rhs = cons.split('>=')
-                    lhs_terms = parse_expression(lhs)
-                    lhs_val = evaluate_expression(lhs_terms, X, Y)
-                    mask &= lhs_val >= float(rhs.strip())
-
-        fig, ax = plt.subplots()
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.contour(X, Y, Z, levels=20, cmap='viridis')
-        ax.contourf(X, Y, mask, levels=[0.5, 1], colors=['#d0f0d0'], alpha=0.3)
-
-        plot_buffer = BytesIO()
-        fig.savefig(plot_buffer, format='png')
-        plt.close(fig)
-        plot_data = base64.b64encode(plot_buffer.getvalue()).decode('utf-8')
-
-        animation_data = None
-        if animate:
-            point = np.array([4.0, 4.0])
-            path = [point.copy()]
-            lr = 0.1
-            for _ in range(30):
-                g = gradient(obj_terms, point)
-                point = point - lr * g
-                path.append(point.copy())
-
-            fig_anim, ax_anim = plt.subplots()
-            ax_anim.contour(X, Y, Z, levels=20, cmap='viridis')
-            ax_anim.contourf(X, Y, mask, levels=[0.5, 1], colors=['#d0f0d0'], alpha=0.3)
-            path = np.array(path)
-            ax_anim.plot(path[:,0], path[:,1], marker='o', color='red')
-            anim_buffer = BytesIO()
-            fig_anim.savefig(anim_buffer, format='png')
-            plt.close(fig_anim)
-            animation_data = base64.b64encode(anim_buffer.getvalue()).decode('utf-8')
+        if anim_fig is not None:
+            animation_html = pio.to_html(anim_fig, include_plotlyjs=False, full_html=False)
 
         result = None
     except Exception as e:
-        plot_data = None
-        animation_data = None
-        result = f"An error occurred: {str(e)}"
+        plot_html = None
+        surface_html = None
+        animation_html = None
+        result = f"An error occurred: {e}"
 
     return templates.TemplateResponse(
         "visualize.html",
         {
             "request": request,
-            "plot_data": plot_data,
-            "animation_data": animation_data,
+            "plot_html": plot_html,
+            "surface_html": surface_html,
+            "animation_html": animation_html,
             "result": result,
         },
     )
