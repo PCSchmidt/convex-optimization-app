@@ -55,6 +55,7 @@ The solver utilizes the CVXPY library to solve the quadratic program, offering:
 - Optimal values for decision variables
 - The minimum value of the objective function
 - The solution status
+- Support for cross terms such as `xy`
 
 **Example Input**
 ```text
@@ -74,8 +75,6 @@ Each solver accepts optional parameters:
 - **tolerance**: stopping tolerance passed to the solver.
 
 If an unsupported method is supplied, the application will return an error.
-
-<!-- codex/add-route-for-2d-plots-visualization -->
 ### 3. Semidefinite Programming Solver
 
 The SDP solver handles problems with matrix variables constrained to be positive semidefinite. Input the objective matrix and constraints using comma-separated values.
@@ -96,9 +95,9 @@ Navigate to `/visualize` to try it out.
 
 ### 7. Educational Content
 
-Cross terms in quadratic objectives (e.g., `xy`) are not yet supported.
+Cross terms in quadratic objectives (e.g., `xy`) are supported.
 
-<!-- main -->
+Key routes include `/visualize` for plots, `/benchmark` for performance testing, and the tutorial at `/tutorial/step/1`.
 
 The app provides educational content on:
 - The basics of convex optimization
@@ -190,16 +189,11 @@ We plan to expand the Convex Optimization App with the following features:
 
 The app currently provides command-line style input forms and basic textual output.
 Interactive visualizations and advanced solver options are still under development.
-Cross terms in quadratic objectives (e.g., `xy`) are now supported by the parser.
+Cross terms in quadratic objectives (e.g., `xy`) are supported by the parser.
 
 ## Running Tests
 
-- codex/align-readme-with-github-workflow
-This project uses `pytest` for its test suite. After installing the dependencies,
-run the tests with the same command used in the GitHub workflow:
-
-This project uses `pytest` for its test suite. After installing the dependencies, run the tests from the repository root:
-- main
+This project uses `pytest` for its test suite. After installing the dependencies, run:
 
 ```bash
 pytest -q
