@@ -23,3 +23,20 @@ def test_missing_var_multiple_constraints():
     values = {line.split("=")[0].strip(): float(line.split("=")[1])
               for line in re.findall(r"^\w+ = [\d.-]+", result, re.MULTILINE)}
     assert "y" in values
+
+from solvers import solve_sdp, solve_conic, solve_geometric
+
+
+def test_solve_sdp_basic():
+    result = solve_sdp("1,0;0,1", "1,0;0,1 >= 1")
+    assert "Status: optimal" in result
+
+
+def test_solve_conic_basic():
+    result = solve_conic("1,1", "soc:1,0;0,1|0,0|1")
+    assert "Status: optimal" in result
+
+
+def test_solve_geometric_basic():
+    result = solve_geometric("x*y", "x*y >= 1\nx >= 1\ny >= 1")
+    assert "Status: optimal" in result

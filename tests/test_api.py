@@ -37,3 +37,19 @@ def test_api_quadratic_program():
     data = response.json()
     assert data.get("status") == "ok"
     assert "result" in data
+
+from app import app as full_app
+full_client = TestClient(full_app)
+
+def test_visualize_route_generates_plot():
+    response = full_client.post(
+        "/visualize",
+        data={"objective": "x", "constraints": "x >= 0"},
+    )
+    assert response.status_code == 200
+    assert "data:image/png;base64" in response.text
+
+def test_benchmark_route_displays_table():
+    response = client.get("/benchmark")
+    assert response.status_code == 200
+    assert "<table" in response.text
