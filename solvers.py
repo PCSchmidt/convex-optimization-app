@@ -5,8 +5,15 @@ from typing import Dict, List, Tuple, Optional
 import cvxpy as cp
 import pulp
 import re
+import numpy as np
 
-from parser import parse_matrix, parse_vector, parse_posynomial
+from parser import (
+    parse_matrix,
+    parse_vector,
+    parse_posynomial,
+    parse_polynomial,
+    extract_quadratic_terms,
+)
 
 
 def parse_expression(expr: str) -> List[Tuple[float, str]]:
@@ -124,26 +131,40 @@ def solve_qp(
 
     Optional ``algorithm`` can select the backend solver implementation.
     """
-    obj_terms = parse_expression(objective)
-    variables: Dict[str, cp.Variable] = {}
-    quad_coeffs: Dict[str, float] = {}
-    linear_coeffs: Dict[str, float] = {}
+    obj_syms, obj_poly = parse_polynomial(objective)
+    quad_terms, lin_terms = extract_quadratic_terms(obj_poly)
 
-    for coef, term in obj_terms:
-        if "^2" in term:
-            var_name = term.split("^")[0]
-            if var_name not in variables:
-                variables[var_name] = cp.Variable()
-            quad_coeffs[var_name] = coef
+    var_names = {str(s) for s in obj_syms}
+    variables: Dict[str, cp.Variable] = {name: cp.Variable() for name in var_names}
+
+    # Include variables appearing only in constraints
+    for constraint in constraints.splitlines():
+        if "<=" in constraint:
+            lhs, _ = constraint.split("<=")
+        elif ">=" in constraint:
+            lhs, _ = constraint.split(">=")
         else:
-            if term not in variables:
-                variables[term] = cp.Variable()
-            linear_coeffs[term] = coef
+            continue
+        for _, var in parse_expression(lhs):
+            if var not in variables:
+                variables[var] = cp.Variable()
+                var_names.add(var)
 
-    objective_expr = sum(
-        coef * variables[var] ** 2 for var, coef in quad_coeffs.items()
-    )
-    objective_expr += sum(coef * variables[var] for var, coef in linear_coeffs.items())
+    var_order = sorted(var_names)
+    idx = {name: i for i, name in enumerate(var_order)}
+    Q = np.zeros((len(var_order), len(var_order)))
+    for (v1, v2), coef in quad_terms.items():
+        i, j = idx[v1], idx[v2]
+        if i == j:
+            Q[i, j] += coef
+        else:
+            Q[i, j] += coef / 2
+            Q[j, i] += coef / 2
+
+    x_vec = cp.vstack([variables[name] for name in var_order])
+    objective_expr = cp.quad_form(x_vec, Q)
+    for var, coef in lin_terms.items():
+        objective_expr += coef * variables[var]
 
     constraints_list: List[cp.Constraint] = []
     for constraint in constraints.splitlines():
