@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import cvxpy as cp
 import pulp
@@ -31,6 +31,7 @@ def solve_lp(
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
+    algorithm: Optional[str] = None,
 ) -> str:
     """Solve a linear program using PuLP.
 
@@ -40,6 +41,9 @@ def solve_lp(
 
     Returns:
         Human readable string describing solver status and variable values.
+
+    Additional parameters allow selecting a specific solver ``algorithm``
+    and adjusting convergence ``tolerance``.
     """
     prob = pulp.LpProblem("Linear Program", pulp.LpMinimize)
 
@@ -79,10 +83,10 @@ def solve_lp(
             )
 
     # Determine solver
-    solver_name = (method or "cbc").lower()
+    solver_name = (algorithm or method or "cbc").lower()
     solvers = {"cbc": pulp.PULP_CBC_CMD, "glpk": pulp.GLPK_CMD}
     if solver_name not in solvers:
-        raise ValueError(f"Unsupported method '{method}'")
+        raise ValueError(f"Unsupported method '{algorithm or method}'")
     solver_kwargs = {"msg": False}
     if max_iter is not None:
         solver_kwargs["timeLimit"] = int(max_iter)
@@ -107,6 +111,7 @@ def solve_qp(
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
+    algorithm: Optional[str] = None,
 ) -> str:
     """Solve a quadratic program using CVXPY.
 
@@ -116,6 +121,8 @@ def solve_qp(
 
     Returns:
         Human readable string describing solver status and solution values.
+
+    Optional ``algorithm`` can select the backend solver implementation.
     """
     obj_terms = parse_expression(objective)
     variables: Dict[str, cp.Variable] = {}
@@ -155,10 +162,10 @@ def solve_qp(
 
     prob = cp.Problem(cp.Minimize(objective_expr), constraints_list)
 
-    solver_name = (method or "ECOS").upper()
+    solver_name = (algorithm or method or "ECOS").upper()
     valid_methods = {"ECOS", "OSQP", "SCS"}
     if solver_name not in valid_methods:
-        raise ValueError(f"Unsupported method '{method}'")
+        raise ValueError(f"Unsupported method '{algorithm or method}'")
     solve_kwargs = {}
     if max_iter is not None:
         if solver_name == "OSQP":
@@ -193,6 +200,7 @@ def solve_sdp(
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
+    algorithm: Optional[str] = None,
 ) -> str:
     """Solve a small semidefinite program.
 
@@ -200,6 +208,8 @@ def solve_sdp(
     strings using comma separated values with ``;`` separating rows.  Each
     constraint line is parsed as ``A <= b`` or ``A >= b`` meaning
     ``trace(A @ X) <= b`` etc.
+
+    The ``algorithm`` parameter selects the solver to use.
     """
 
     C = parse_matrix(objective)
@@ -225,9 +235,9 @@ def solve_sdp(
 
     prob = cp.Problem(cp.Minimize(cp.trace(C @ X)), constr)
 
-    solver_name = (method or "SCS").upper()
+    solver_name = (algorithm or method or "SCS").upper()
     if solver_name not in {"SCS"}:
-        raise ValueError(f"Unsupported method '{method}'")
+        raise ValueError(f"Unsupported method '{algorithm or method}'")
     solve_kwargs = {}
     if max_iter is not None:
         solve_kwargs["max_iters"] = int(max_iter)
@@ -250,8 +260,12 @@ def solve_conic(
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
+    algorithm: Optional[str] = None,
 ) -> str:
-    """Solve a basic conic program using second-order cone constraints."""
+    """Solve a basic conic program using second-order cone constraints.
+
+    The ``algorithm`` argument chooses the solver backend.
+    """
 
     c = parse_vector(objective)
     n = len(c)
@@ -280,9 +294,9 @@ def solve_conic(
 
     prob = cp.Problem(cp.Minimize(c @ x), constr)
 
-    solver_name = (method or "SCS").upper()
+    solver_name = (algorithm or method or "SCS").upper()
     if solver_name not in {"SCS"}:
-        raise ValueError(f"Unsupported method '{method}'")
+        raise ValueError(f"Unsupported method '{algorithm or method}'")
     solve_kwargs = {}
     if max_iter is not None:
         solve_kwargs["max_iters"] = int(max_iter)
@@ -305,8 +319,12 @@ def solve_geometric(
     method: Optional[str] = None,
     max_iter: Optional[int] = None,
     tolerance: Optional[float] = None,
+    algorithm: Optional[str] = None,
 ) -> str:
-    """Solve a geometric program using CVXPY."""
+    """Solve a geometric program using CVXPY.
+
+    ``algorithm`` chooses between available solvers.
+    """
 
     var_names = set(re.findall(r"[a-zA-Z]\w*", objective))
     for line in constraints.splitlines():
@@ -335,9 +353,9 @@ def solve_geometric(
 
     prob = cp.Problem(cp.Minimize(objective_expr), constr)
 
-    solver_name = (method or "ECOS").upper()
+    solver_name = (algorithm or method or "ECOS").upper()
     if solver_name not in {"ECOS", "SCS"}:
-        raise ValueError(f"Unsupported method '{method}'")
+        raise ValueError(f"Unsupported method '{algorithm or method}'")
     solve_kwargs = {}
     if max_iter is not None:
         solve_kwargs["max_iters"] = int(max_iter)
