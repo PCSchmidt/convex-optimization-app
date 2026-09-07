@@ -208,11 +208,15 @@ def verify_log(path: Path, gap_tol: float = 1e-8) -> int:
         manifest = json.load(f)
 
     print(f"verify: {path}")
-    print(f"  recorded identity: date_utc={manifest.get('date_utc')} git_commit={manifest.get('git_commit')}")
+    print(
+        f"  recorded identity: date_utc={manifest.get('date_utc')} git_commit={manifest.get('git_commit')}"
+    )
     for lib, current in (("numpy", np.__version__), ("scipy", scipy.__version__)):
         recorded = manifest.get(f"{lib}_version")
-        status = "match" if recorded == current else (
-            "MISMATCH (determinism across versions is not guaranteed; treating as a warning)"
+        status = (
+            "match"
+            if recorded == current
+            else ("MISMATCH (determinism across versions is not guaranteed; treating as a warning)")
         )
         print(f"  {lib}: recorded={recorded} current={current} -> {status}")
 
@@ -223,7 +227,9 @@ def verify_log(path: Path, gap_tol: float = 1e-8) -> int:
     failures = 0
     for row in rows:
         problem = BUILDERS[row["problem"]](seed=int(row["seed"]))
-        _, result = cli.solve(row["problem"], row["method"], max_iter=max_iter, tol=tol, problem=problem)
+        _, result = cli.solve(
+            row["problem"], row["method"], max_iter=max_iter, tol=tol, problem=problem
+        )
         gap = result.final_objective_gap(problem.ground_truth.f)
         ok_iter = result.n_iter == int(row["n_iter"])
         ok_gap = abs(gap - float(row["final_gap"])) <= gap_tol
