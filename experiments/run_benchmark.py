@@ -23,6 +23,12 @@ Honesty rules baked in:
 Usage (from the repo root):
     make eval        # or: PYTHONPATH=src .venv/Scripts/python.exe experiments/run_benchmark.py
 
+Stage 6 maintain: ``make refresh`` runs the SAME suite into a VERSIONED
+bundle (experiments/runs/<ts>/), verifies it, and only then moves the
+``current`` pointer; ``make rollback`` points back at the frozen Stage 2
+baseline. See ``experiments/maintain.py``. ``make eval`` still writes the
+default (destructive, git-tracked) experiments/run_log.* paths.
+
 Stage 3 artifact bundle: the written experiments/run_log.json IS the bundle
 manifest. It carries the identity needed to regenerate the results: per-row
 (problem, seed, method, n_iter, final gap, converged), the settings
@@ -126,21 +132,16 @@ def run_cell(problem_name: str, seed: int, method: str) -> dict:
     }
 
 
-def run_benchmark() -> int:
-    rows = []
-    for problem_name, seeds in SEEDS.items():
-        for method in cli.APPLICABLE[problem_name]:
-            for seed in seeds:
-                row = run_cell(problem_name, seed, method)
-                rows.append(row)
-                print(
-                    f"{row['problem']:>14s} seed={row['seed']} {row['method']:>8s} "
-                    f"n_iter={row['n_iter']:>5d} wall={row['wall_time_s']}s "
-                    f"gap={row['final_gap']} res={row['final_residual']} "
-                    f"conv={row['converged']}"
-                )
+def write_bundle(out_dir: Path, rows: list[dict]) -> tuple[Path, Path]:
+    """Write the bundle (run_log.csv + run_log.json) into ``out_dir``.
 
-    out_dir = Path(__file__).resolve().parent
+    The schema is byte-identical to the Stage 2/3 bundle. ``out_dir`` is a
+    parameter so the Stage 6 refresh can write a VERSIONED bundle
+    (``experiments/runs/<ts>/``) instead of clobbering the frozen Stage 2
+    baseline in ``experiments/``.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / "run_log.csv"
     json_path = out_dir / "run_log.json"
     fieldnames = [
@@ -190,6 +191,33 @@ def run_benchmark() -> int:
     }
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
+    return csv_path, json_path
+
+
+def run_benchmark(out_dir: Path | None = None) -> int:
+    """Run the full Stage 2 suite and write the bundle.
+
+    ``out_dir`` defaults to ``experiments/`` (the historical ``make eval``
+    behavior, which OVERWRITES experiments/run_log.* in the working tree;
+    they are git-tracked, so the committed v1 baseline stays recoverable with
+    ``git checkout -- experiments/run_log.json experiments/run_log.csv``).
+    The Stage 6 refresh (``experiments/maintain.py``) instead passes a
+    versioned directory and never touches the frozen baseline files.
+    """
+    rows = []
+    for problem_name, seeds in SEEDS.items():
+        for method in cli.APPLICABLE[problem_name]:
+            for seed in seeds:
+                row = run_cell(problem_name, seed, method)
+                rows.append(row)
+                print(
+                    f"{row['problem']:>14s} seed={row['seed']} {row['method']:>8s} "
+                    f"n_iter={row['n_iter']:>5d} wall={row['wall_time_s']}s "
+                    f"gap={row['final_gap']} res={row['final_residual']} "
+                    f"conv={row['converged']}"
+                )
+    target = Path(__file__).resolve().parent if out_dir is None else Path(out_dir)
+    csv_path, json_path = write_bundle(target, rows)
     print(f"wrote {csv_path} and {json_path} ({len(rows)} rows)")
     return 0
 

@@ -7,7 +7,7 @@ else
     VENV_PY := .venv/bin/python
 endif
 
-.PHONY: setup test lint format clean solve eval verify docker-build smoke api
+.PHONY: setup test lint format clean solve eval verify refresh rollback current docker-build smoke api
 
 setup:
 	python -m venv .venv
@@ -26,6 +26,11 @@ solve:
 # Stage 2 benchmark: measures the Stage 1 methods AS-IS across seeds and
 # writes experiments/run_log.csv + experiments/run_log.json. NOT part of
 # `make test`: wall-time measurement is too noisy for CI assertions.
+# Stage 6 note: this writes the DEFAULT paths, i.e. it overwrites the
+# working-tree copies of the frozen v1 bundle (git-tracked; recover with
+# `git checkout -- experiments/run_log.json experiments/run_log.csv`).
+# The Stage 6 refresh (`make refresh`) writes a VERSIONED bundle instead
+# and never touches experiments/run_log.*.
 eval:
 	PYTHONPATH=src $(VENV_PY) experiments/run_benchmark.py
 
@@ -35,6 +40,21 @@ eval:
 # of `make test`.
 verify:
 	PYTHONPATH=src $(VENV_PY) experiments/run_benchmark.py --verify experiments/run_log.json
+
+# Stage 6 maintain (offline, on-demand; NO scheduler): re-run the Stage 2
+# suite into a VERSIONED bundle experiments/runs/<ts>/, verify it (n_iter
+# exact vs the recomputed cells and vs the frozen v1 baseline; wall time
+# excluded), and move experiments/current.json ONLY if everything passes.
+refresh:
+	PYTHONPATH=src $(VENV_PY) experiments/maintain.py refresh
+
+# Point experiments/current.json back at the frozen Stage 2 (v1) baseline.
+rollback:
+	PYTHONPATH=src $(VENV_PY) experiments/maintain.py rollback
+
+# Show the 'current' pointer target and the pointed-to bundle's identity.
+current:
+	PYTHONPATH=src $(VENV_PY) experiments/maintain.py current
 
 lint:
 	$(VENV_PY) -m ruff check .

@@ -360,6 +360,112 @@ mismatches are reported as warnings because determinism across versions is not
 guaranteed — the recomputation itself decides pass/fail. The shipped Stage 2
 bundle verifies 18/18 cells on the host and inside the container.
 
+### Stage 6 maintain: versioned refresh, rollback pointer, incident runbook
+
+The committed `experiments/run_log.json` (+ `.csv`) is the FROZEN Stage 2 (v1)
+baseline. Stage 6 maintenance is CLI-side and on-demand (offline; NO scheduler,
+no cron, no production MLOps) and does NOT retune anything: the Stage 1-2
+constants (1/L steps, Nesterov momentum, `tol=1e-10`, `max_iter=2000`) and the
+API (still no tol/max_iter/seed knobs) are unchanged, and no Stage 2 finding is
+revised.
+
+`make eval` decision, documented honestly: `make eval` still writes the DEFAULT
+paths `experiments/run_log.csv` + `experiments/run_log.json`, i.e. it overwrites
+the working-tree copies of the frozen bundle. They are git-tracked, so the
+committed v1 stays recoverable with
+`git checkout -- experiments/run_log.json experiments/run_log.csv`. The Stage 6
+refresh instead writes a VERSIONED bundle and never touches those files:
+
+```bash
+make refresh    # Stage 2 suite -> experiments/runs/<UTC-ts>/run_log.{csv,json}
+```
+
+`make refresh` (via `experiments/maintain.py`):
+
+1. re-runs the SAME Stage 2 suite (same cells, same settings; `n_iter` is
+   deterministic);
+2. verifies the fresh bundle with the EXISTING Stage 3 verifier (recompute
+   every cell: `n_iter` exact, gap within 1e-8; wall time excluded);
+3. cross-compares it against the frozen v1 baseline (`n_iter` exact, converged
+   equal, gap within 1e-8; wall time deliberately EXCLUDED -- it is noisy on
+   this host and a wall-time difference is NOT a regression or an improvement);
+4. only if BOTH pass, atomically moves the `current` pointer
+   (`experiments/current.json`) to the new bundle. ANY failure leaves the
+   pointer untouched.
+
+Rollback and status:
+
+```bash
+make current    # show the pointer target + the pointed-to bundle's identity
+make rollback   # point `current` back at the frozen Stage 2 (v1) baseline
+```
+
+The pointer stores a path relative to `experiments/` (`run_log.json` for v1;
+`runs/<ts>/run_log.json` after a refresh). Identity (git commit, numpy/scipy
+versions, settings) lives in the bundle the pointer targets, so after a
+rollback `make current` reports the v1 identity again.
+
+Serving does NOT read the pointer: the Stage 4 API (`app.py`) always runs the
+Stage 1 methods in-process via `cli.solve`, exactly as before. Refresh and
+rollback are therefore CLI-side only and require NO image rebuild (the minimal
+honest option; if serving ever starts reading the pointer, the image must be
+rebuilt and compose re-verified with real curls first).
+
+#### Incident runbook (offline commands; local compose only)
+
+1. **Solver non-convergence (`converged=false` / `max_iter` hit).** Signal: a
+   200 response with `"converged": false`, `solve.convergence_failures` /
+   `solve.convergence_failure_rate` rising in `/metrics`, and a log line with
+   `"converged": false` and `iterations` pinned at 2000 (the Stage 5
+   convergence-failure definition, unchanged).
+
+   ```bash
+   curl --noproxy '*' -X POST http://localhost:8000/solve \
+     -H 'Content-Type: application/json' -d '{"problem":"logistic","method":"nesterov"}'
+   curl --noproxy '*' http://localhost:8000/metrics | grep convergence
+   docker compose logs api | grep '"converged": false'
+   ```
+
+   Response: do NOT retune (the Stage 1-2 constants are fixed by design; the
+   API has no tol/max_iter knobs). All 18 cells of the shipped suite converge
+   (18/18 in the v1 log), so a failure points at a NEW problem or pair, not a
+   solver change. Check the benchmark still reproduces with `make verify`
+   (18/18 expected); retuning would be a deliberate, separately documented
+   decision -- never an ops action.
+
+2. **Numerical instability (NaN/Inf).** HYPOTHETICAL for the shipped problems:
+   the seeded problems are small and well-conditioned and all 18 v1 cells
+   converge with finite gaps, and the API accepts only those fixed problems, so
+   no request can inject diverging data. The exact check that would catch it:
+   a non-finite final objective or residual (`not np.isfinite(...)` on the
+   solver result before a response is built) would raise and surface as HTTP
+   500 -> `status_counts["5xx"]` and `errors.rate_5xx` in `/metrics`, with the
+   log line `"error_class": "server_error"` (the same overflow path documented
+   under Stage 5). What a reviewer would run:
+
+   ```bash
+   curl --noproxy '*' http://localhost:8000/metrics | grep -o '"rate_5xx":[^,]*'
+   docker compose logs api | grep error_class
+   ```
+
+3. **API failures (inapplicable pair 422, health down).**
+
+   ```bash
+   # inapplicable pair -> 422 (counts as an ERROR, never a convergence failure)
+   curl --noproxy '*' -X POST http://localhost:8000/solve \
+     -H 'Content-Type: application/json' -d '{"problem":"lasso","method":"nesterov"}'
+   # health down -> check and restart locally
+   curl --noproxy '*' http://localhost:8000/health || docker compose ps
+   docker compose up -d api     # or: make api
+   ```
+
+4. **Benchmark/results incident (suspected drift or regression).** Run
+   `make refresh`. If verification or the v1-equivalence comparison FAILS, the
+   pointer does NOT move: the v1 baseline stays current, and the service was
+   never affected (it does not read the pointer). Investigate the mismatch
+   before any refresh. `experiments/incident.md` records one fully executed
+   walkthrough (refresh -> 18/18 verify -> rollback -> identity restored).
+
 ### Docker (local only, no deployment)
 
 ```bash
@@ -374,7 +480,8 @@ one offline solve (logistic + nesterov). The Python 3.11 install failure is
 reproducible with `docker build --build-arg PYTHON_TAG=3.11`.
 
 Other targets: `make lint` (ruff check + format check), `make format`,
-`make verify` (bundle check above), `make docker-build`, `make smoke`,
+`make verify` (bundle check above), `make refresh` / `make rollback` /
+`make current` (Stage 6 maintain, above), `make docker-build`, `make smoke`,
 `make api` (Stage 4 serving via compose, host port `${PORT:-8000}`), `make clean` (removes caches and `.venv`). CI runs lint + tests on every push
 and pull request, then builds the image and runs the offline smoke solve in it
 as build proof (no registry push). Do not commit secrets, API keys, or large
