@@ -33,3 +33,14 @@ jobs:
         run: docker build -t convex-optimization:ci .
       - name: Offline smoke solve in the container
         run: docker run --rm --network none convex-optimization:ci
+      - name: Stage 4 API proof (health + solve, local only)
+        run: |
+          docker run -d --name api -p 8000:8000 convex-optimization:ci \
+            uvicorn convex_optimization.app:app --host 0.0.0.0 --port 8000
+          curl --fail --silent --show-error --retry 15 --retry-delay 1 --retry-connrefused \
+            http://localhost:8000/health
+          curl --fail --silent --show-error \
+            -X POST http://localhost:8000/solve \
+            -H "Content-Type: application/json" \
+            -d '{"problem":"logistic","method":"nesterov"}' | grep -o '"converged":true'
+          docker rm -f api

@@ -7,7 +7,7 @@ else
     VENV_PY := .venv/bin/python
 endif
 
-.PHONY: setup test lint format clean solve eval verify docker-build smoke
+.PHONY: setup test lint format clean solve eval verify docker-build smoke api
 
 setup:
 	python -m venv .venv
@@ -50,6 +50,11 @@ docker-build:
 
 smoke:
 	docker compose run --rm smoke
+
+# Stage 4 serving (LOCAL ONLY): build and run the FastAPI app in the container
+# on the host port ${PORT:-8000} (default 8000). NOT part of `make test`.
+api:
+	docker compose up --build api
 
 clean:
 	rm -rf .venv .pytest_cache .ruff_cache build dist

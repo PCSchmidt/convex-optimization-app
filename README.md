@@ -169,8 +169,9 @@ indicative only.
 - Requires Python 3.12+. The pinned lock (`requirements-lock.txt`, numpy 2.5.3) does not install
   on Python 3.11 because numpy 2.5.3 requires Python >= 3.12; the failure is reproducible with
   `docker build --build-arg PYTHON_TAG=3.11` (documented in the Dockerfile header).
-- No serving layer or monitoring yet (planned for Stage 4-5). Containerization is local-only
-  (Stage 3 Dockerfile/compose for an offline smoke solve); no public deployment.
+- Serving (Stage 4) is a local, single-user demo API behind Docker Compose: no TLS, no auth,
+  no rate limiting, not exposed publicly. Monitoring is still unimplemented (planned Stage 5).
+  The Stage 3 offline smoke solve (network_mode none) is unchanged.
 - Legacy reference code in `legacy/` is read-only and is not part of the
   installed package.
 
@@ -201,6 +202,76 @@ writes `experiments/run_log.csv` and `experiments/run_log.json`; NOT part of
 ```bash
 make eval
 ```
+
+### Stage 4 serving API (LOCAL Docker Compose only)
+
+Deploy-target decision: **local Docker Compose is the accepted minimum deploy
+target. Public cloud endpoints (ngrok, Azure, AWS, or any paid hosting) were
+DECLINED** — cost, and this is a portfolio demonstration of a solver API, not
+a production service. Accordingly there are **no TLS, no auth, and no
+multi-user serving claims**: the API below binds to localhost by default via
+Docker's published port and is meant for a reviewer to run on their own
+machine.
+
+The API (`src/convex_optimization/app.py`, FastAPI) runs the EXISTING Stage 1
+methods as-is via `cli.solve` — same step sizes, tolerances (`tol=1e-10`),
+`max_iter=2000`, and default-seeded problems. No numerical code is duplicated.
+Applicable pairs mirror the CLI's `APPLICABLE` matrix:
+
+| problem | applicable methods |
+| --- | --- |
+| least_squares | gd, nesterov |
+| lasso | fista, ista |
+| logistic | gd, nesterov |
+
+Endpoints (interactive docs at `/docs`):
+
+- `GET /health` -> `{"status":"ok"}` (200).
+- `POST /solve`, JSON body `{"problem": ..., "method": ..., "tail": 5}`:
+  - `problem`/`method` must be valid names (422 otherwise); an INAPPLICABLE
+    pair (e.g. lasso + nesterov) also returns **422** with the list of
+    applicable methods, mirroring the CLI.
+  - `tail` (optional, 1-20, default 5) bounds the returned history rows; the
+    full history is never returned by the API (use the CLI / Python API).
+  - 200 response: `iterations`, `converged`, `tol`, `final_objective`,
+    `ground_truth_objective`, `final_objective_gap` (vs the documented ground
+    truth — for lasso the eps-smoothed SciPy approximate reference, computed
+    CPU-only at request time), `final_residual`, `ground_truth_source`,
+    `history_tail` (last rows as `{iteration, objective, residual}`).
+
+Environment variables: the app has no secrets and needs no keys. The only
+configuration knob is `PORT` — the host port published by compose for the
+`api` service (default 8000; the container always listens on 8000
+internally). Default compose path is fully offline: the solve endpoints make
+no network calls.
+
+### Deployment runbook (local Docker Compose)
+
+From a clean clone (Windows Git Bash; for POSIX shells the same commands work
+with forward slashes as written):
+
+```bash
+git clone <repo-url>
+cd convex_optimization_app
+# optional pre-check (uses the venv, offline): make setup && make test
+docker compose build                # or: make docker-build
+docker compose up -d api            # serves on http://localhost:${PORT:-8000}
+curl --noproxy '*' http://localhost:8000/health
+curl --noproxy '*' -X POST http://localhost:8000/solve   -H 'Content-Type: application/json'   -d '{"problem":"logistic","method":"nesterov"}'
+docker compose down
+```
+
+Windows Git Bash notes:
+
+- Quote the JSON body with single quotes; if your shell mangles them, write
+  the body to a file and use `curl -d @body.json`.
+- Use `--noproxy '*'` (or unset `HTTP_PROXY`/`HTTPS_PROXY`) if a corporate
+  proxy intercepts localhost requests.
+- Git Bash on Windows accepts forward slashes in paths and URLs; do not
+  backslash-escape inside single-quoted strings.
+- `docker compose run --rm smoke` (network_mode none) still proves the CLI
+  solve path is fully offline; the `api` service uses normal networking
+  because a published port is incompatible with `network_mode: none`.
 
 ### Version identity and tag convention
 
@@ -247,7 +318,7 @@ reproducible with `docker build --build-arg PYTHON_TAG=3.11`.
 
 Other targets: `make lint` (ruff check + format check), `make format`,
 `make verify` (bundle check above), `make docker-build`, `make smoke`,
-`make clean` (removes caches and `.venv`). CI runs lint + tests on every push
+`make api` (Stage 4 serving via compose, host port `${PORT:-8000}`), `make clean` (removes caches and `.venv`). CI runs lint + tests on every push
 and pull request, then builds the image and runs the offline smoke solve in it
 as build proof (no registry push). Do not commit secrets, API keys, or large
 artifacts.

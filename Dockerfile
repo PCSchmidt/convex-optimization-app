@@ -25,6 +25,10 @@ COPY src/ ./src/
 COPY experiments/ ./experiments/
 COPY pyproject.toml README.md ./
 
+# Stage 4 serving (compose `api` service) overrides the command with uvicorn;
+# port 8000 is the fixed container-internal API port.
+EXPOSE 8000
+
 # Default command: one fully offline solve (logistic + nesterov), the Stage 3
 # smoke check. Override per run, e.g.:
 #   docker run --rm <image> python -m convex_optimization.cli --problem lasso --method fista
