@@ -68,10 +68,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 ## Stage 6 - Maintain
 
-- [ ] Refresh path: how to re-run the benchmark suite and regenerate results.
-- [ ] Rollback path: revert to a previous code/artifact version.
-- [ ] Runbook for common incidents (non-convergence, numerical instability, API failures).
-- [ ] One documented incident write-up (real or realistic) showing the maintain loop.
+- [x] Refresh path: how to re-run the benchmark suite and regenerate results.
+- [x] Rollback path: revert to a previous code/artifact version.
+- [x] Runbook for common incidents (non-convergence, numerical instability, API failures).
+- [x] One documented incident write-up (real or realistic) showing the maintain loop.
 
 **Acceptance:** The maintain loop is documented and executable, not just described.
 
