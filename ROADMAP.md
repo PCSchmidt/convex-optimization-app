@@ -36,6 +36,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 ## Stage 3 - Ship (versioned, reproducible)
 
+> Note: the Python floor was raised to 3.12 in this stage. numpy 2.5.3 from
+> `requirements-lock.txt` requires Python >= 3.12, and pip install of the lock on Python 3.11
+> fails (reproduced via `docker build --build-arg PYTHON_TAG=3.11`). The lockfile is unchanged.
+
 - [ ] Code versioning: tag releases; pin numerical library versions.
 - [ ] Artifact bundle: documented way to store and load experiment configs and results.
 - [ ] `requirements.lock` and a reproducible build path.

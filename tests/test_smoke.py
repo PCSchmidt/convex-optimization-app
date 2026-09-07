@@ -6,7 +6,7 @@ import convex_optimization
 
 
 def test_python_version_floor():
-    assert sys.version_info >= (3, 11)
+    assert sys.version_info >= (3, 12)
 
 
 def test_package_imports_and_exposes_version():
