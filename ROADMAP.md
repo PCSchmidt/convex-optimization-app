@@ -28,9 +28,9 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 ## Stage 2 - Evaluate (before optimizing)
 
-- [ ] Metrics: iterations to convergence, wall time, final objective gap, and stability across seeds.
-- [ ] Benchmark all methods across all problems; record results in an `experiments/` run log.
-- [ ] Fixed seeds and pinned versions for full reproducibility.
+- [x] Metrics: iterations to convergence, wall time, final objective gap, and stability across seeds.
+- [x] Benchmark all methods across all problems; record results in an `experiments/` run log.
+- [x] Fixed seeds and pinned versions for full reproducibility.
 
 **Acceptance:** Benchmark results are recorded and reproducible. No tuning happens before this.
 

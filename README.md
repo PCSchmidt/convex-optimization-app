@@ -42,6 +42,12 @@ SciPy is used only as a ground-truth reference, never as the method.
   `lambda / L`, the exact proximal operator of `lambda * ||.||_1` at step
   `1/L`. The step `1/L` (L = Lipschitz constant of the smooth part) is the
   largest step for which the proximal-gradient map is guaranteed contractive.
+- **ISTA** (non-accelerated proximal gradient, `methods.ista`; added in
+  Stage 2 for benchmarking): exactly FISTA minus the momentum sequence, with
+  the IDENTICAL `1/L` step, identical `prox`, identical tolerance and
+  stopping rule. It exists so the benchmark can compare accelerated vs
+  non-accelerated proximal gradient with nothing else changed. No constant
+  was tuned for the benchmark.
 
 Every method returns a `Result` whose `History` records the objective value
 and a residual at every iterate, including the initial point. Residuals:
@@ -92,13 +98,53 @@ The CLI prints the final objective gap and the last five history rows for one
 
 ## Results
 
-No benchmark tables yet. Stage 1 establishes correctness, not comparisons:
-`make test` verifies that every method reaches its stated tolerance on every
-applicable problem. Per-run numbers (iterations, final objective gap,
-residual) can be produced with `make solve ARGS="..."` (see Operational
-notes). Iterations-to-convergence comparisons, wall-clock timing, multi-seed
-stability, and an `experiments/` run log are Stage 2 work and are
-deliberately not claimed here.
+Stage 2 baseline benchmark of the Stage 1 methods **as-is** (no tuning):
+fixed `1/L` steps, Nesterov momentum from the known `L/mu`, `tol = 1e-10`,
+`max_iter = 2000`, zero start. Applicable (problem, method) pairs only —
+the smooth methods are not run on the nonsmooth Lasso. Three problem seeds
+per problem (Stage 1 default seed included; dimensions unchanged). Full
+per-run log: `experiments/run_log.csv` (+ `.json` metadata), regenerate with
+`make eval`. All numbers below come from that log (numpy 2.5.3,
+scipy 1.18.1, Git Bash on Windows).
+
+Baseline results on small synthetic problems (NOT production benchmarks).
+`n_iter` is fully deterministic (two consecutive runs reproduced it exactly);
+wall time in milliseconds is the per-cell median of 3 runs and is **indicative
+only** — it is noisy on this host and is not used to rank methods.
+
+| problem | method | n_iter (seed A / B / C) | max abs gap | wall ms (range) | all converged |
+| --- | --- | --- | --- | --- | --- |
+| least_squares | gd | 1445 / 1475 / 668 | 1.1e-16 | 6.8-15.2 | yes |
+| least_squares | nesterov | 192 / 200 / 129 | 2.3e-16 | 1.1-1.8 | yes |
+| lasso | fista | 1436 / 950 / 775 | 6.6e-10 | 14.2-27.2 | yes |
+| lasso | ista | 1451 / 1187 / 662 | 6.6e-10 | 13.4-25.1 | yes |
+| logistic | gd | 62 / 71 / 62 | 5.6e-17 | 2.1-2.3 | yes |
+| logistic | nesterov | 33 / 35 / 35 | 5.6e-17 | 0.8-1.3 | yes |
+
+Seeds: least_squares and lasso use 0/1/2, logistic uses 1/2/3 (each problem's
+Stage 1 default seed is included). "Gap" is `f(x_final) - f(x*)` against the
+documented ground truth; for the lasso this is the eps=1e-10 smoothed SciPy
+L-BFGS-B reference, which is approximate (bias < ~1e-9). Two lasso runs
+(seed 1) land slightly BELOW that reference — expected, because the
+eps-smoothing biases the reference optimum upward.
+
+What the recorded numbers actually show:
+
+- **Nesterov vs gradient descent: fewer iterations, consistently.** Across
+  all seeds, Nesterov needed 129-200 vs 668-1475 iterations on least_squares
+  (~3.5-7.7x fewer) and 33-35 vs 62-71 on logistic (~1.8-2.1x fewer). Since
+  `n_iter` is deterministic, this is the robust comparison signal.
+- **FISTA vs ISTA on the lasso: no consistent winner at this tolerance.**
+  FISTA used fewer iterations than ISTA on seeds 0 and 1 (1436 vs 1451,
+  950 vs 1187) but MORE on seed 2 (775 vs 662). The theoretical O(1/k^2) vs
+  O(1/k) advantage did not translate into a clear iteration win on this small
+  problem at `tol = 1e-10`. No acceleration claim is made for the lasso.
+- **Stability across seeds:** all 18 runs converged, and every final gap is
+  within the Stage 1 tolerance criteria (|gap| <= 1e-8; residuals <= 1e-6).
+
+Wall time roughly tracks the iteration counts, but the cells take
+milliseconds, so single timings are dominated by noise; treat them as
+indicative only.
 
 ## Limitations
 
@@ -109,8 +155,17 @@ deliberately not claimed here.
   nonsmooth optimum; tolerances account for this, but it is an approximation.
 - Armijo backtracking gradient descent stalls near the optimum in float64
   (documented above); the benchmarks use the fixed `1/L` step instead.
-- No Stage 2 evaluation yet: no wall-clock comparisons, no multi-seed
-  stability, no `experiments/` run log, no method-vs-method ranking claims.
+- Stage 2 baselines are measured on small synthetic problems (10-40
+  dimensions, 3 seeds each) and are NOT production benchmarks. Only
+  first-order methods are compared; no second-order, ADMM, or
+  constrained-solver baselines.
+- Wall-clock timing on the development host (Windows, Git Bash) is noisy;
+  timings are reported per cell but methods are compared on iteration
+  counts, which are deterministic.
+- The lasso comparison (FISTA vs ISTA) shows no consistent iteration
+  advantage for acceleration at `tol = 1e-10` on this problem size; the
+  lasso truth is the approximate eps-smoothed SciPy reference, so lasso gaps
+  inherit its bias.
 - No serving layer, containerization, or monitoring yet (planned for later
   stages of the roadmap).
 - Legacy reference code in `legacy/` is read-only and is not part of the
@@ -133,6 +188,14 @@ gap vs ground truth and the last few history rows):
 ```bash
 make solve ARGS="--problem lasso --method fista"     # lasso | least_squares | logistic
 make solve ARGS="--problem logistic --method nesterov"
+```
+
+Run the Stage 2 benchmark (all applicable problem/method pairs x 3 seeds,
+writes `experiments/run_log.csv` and `experiments/run_log.json`; NOT part of
+`make test`, and offline):
+
+```bash
+make eval
 ```
 
 Other targets: `make lint` (ruff check + format check), `make format`,
