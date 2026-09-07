@@ -50,10 +50,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 ## Stage 4 - Deploy
 
-- [ ] FastAPI serving layer exposing the optimization methods as a documented API.
-- [ ] Deploy target decision: local Docker Compose (minimum) or a public endpoint (optional).
-- [ ] Environment-based configuration (no hardcoded secrets).
-- [ ] Document the deployment runbook.
+- [x] FastAPI serving layer exposing the optimization methods as a documented API.
+- [x] Deploy target decision: local Docker Compose (minimum) or a public endpoint (optional).
+- [x] Environment-based configuration (no hardcoded secrets).
+- [x] Document the deployment runbook.
 
 **Acceptance:** The app runs from the container and responds to health + solve endpoints.
 
