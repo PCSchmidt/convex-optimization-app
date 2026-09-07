@@ -1,0 +1,15 @@
+# Local-only compose for the Stage 3 offline smoke solve.
+# Not a deployment: no serving layer, no ports, no volumes, no secrets.
+#   docker compose build              # build the image
+#   docker compose run --rm smoke     # one offline CLI solve (logistic + nesterov)
+#   docker compose down               # remove the stopped container
+services:
+  smoke:
+    build:
+      context: .
+      args:
+        PYTHON_TAG: "3.12"
+    image: convex-optimization:local
+    # network_mode "none" proves the solve is fully offline.
+    network_mode: "none"
+    command: ["python", "-m", "convex_optimization.cli", "--problem", "logistic", "--method", "nesterov"]

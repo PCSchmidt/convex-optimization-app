@@ -40,11 +40,11 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 > `requirements-lock.txt` requires Python >= 3.12, and pip install of the lock on Python 3.11
 > fails (reproduced via `docker build --build-arg PYTHON_TAG=3.11`). The lockfile is unchanged.
 
-- [ ] Code versioning: tag releases; pin numerical library versions.
+- [x] Code versioning: tag releases; pin numerical library versions.
 - [x] Artifact bundle: documented way to store and load experiment configs and results.
 - [x] `requirements.lock` and a reproducible build path.
-- [ ] Containerize the app (Dockerfile) and provide `docker-compose.yml`.
-- [ ] CI/CD pipeline that builds, tests, and produces a tagged artifact.
+- [x] Containerize the app (Dockerfile) and provide `docker-compose.yml`.
+- [x] CI/CD pipeline that builds, tests, and produces a tagged artifact.
 
 **Acceptance:** A tagged release can be rebuilt and run reproducibly.
 

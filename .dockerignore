@@ -1,0 +1,25 @@
+# Keep the build context small and secret-free.
+.venv/
+venv/
+env/
+.git/
+.gitignore
+.github/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.coverage*
+htmlcov/
+artifacts/
+legacy/
+.env
+.env.*
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

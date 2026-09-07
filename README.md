@@ -166,14 +166,18 @@ indicative only.
   advantage for acceleration at `tol = 1e-10` on this problem size; the
   lasso truth is the approximate eps-smoothed SciPy reference, so lasso gaps
   inherit its bias.
-- No serving layer, containerization, or monitoring yet (planned for later
-  stages of the roadmap).
+- Requires Python 3.12+. The pinned lock (`requirements-lock.txt`, numpy 2.5.3) does not install
+  on Python 3.11 because numpy 2.5.3 requires Python >= 3.12; the failure is reproducible with
+  `docker build --build-arg PYTHON_TAG=3.11` (documented in the Dockerfile header).
+- No serving layer or monitoring yet (planned for Stage 4-5). Containerization is local-only
+  (Stage 3 Dockerfile/compose for an offline smoke solve); no public deployment.
 - Legacy reference code in `legacy/` is read-only and is not part of the
   installed package.
 
 ## Operational notes
 
-Requirements: Python 3.11+, `git`, GNU `make`.
+Requirements: Python 3.12+, `git`, GNU `make`, and optionally Docker (local
+container runs only).
 
 ```bash
 git clone <repo-url>
@@ -198,7 +202,52 @@ writes `experiments/run_log.csv` and `experiments/run_log.json`; NOT part of
 make eval
 ```
 
+### Version identity and tag convention
+
+- Numerical stack: numpy 2.5.3 / scipy 1.18.1, from `requirements-lock.txt`
+  (the only lock; unchanged since Stage 2). The versions used for the recorded
+  results are also stamped into `experiments/run_log.json`.
+- Problem/method matrix identity: the applicable-pairs matrix in
+  `src/convex_optimization/cli.py` (`APPLICABLE`: least_squares and logistic
+  with gd/nesterov; lasso with fista/ista) at the Stage 1 settings
+  `tol=1e-10`, `max_iter=2000`, recorded in each bundle's `settings`.
+- Git tag convention: `stageN-vX.Y.Z` (for example `stage3-v0.2.0`), placed on
+  the commit whose code produced the recorded results. Tags are local release
+  markers; CI does not push tags or images to any registry.
+
+### Experiment artifact bundle (save / verify)
+
+`make eval` is the save step: it writes `experiments/run_log.csv` plus
+`experiments/run_log.json`, the bundle manifest. The manifest carries the
+identity needed to regenerate every result: per row the problem, seed, method,
+`n_iter`, final gap, residual and converged flag; plus the settings
+(`tol=1e-10`, `max_iter=2000`), numpy/scipy versions, and the git commit.
+
+Verify the bundle offline (`make verify`, or
+`PYTHONPATH=src .venv/Scripts/python.exe experiments/run_benchmark.py --verify experiments/run_log.json`):
+it rebuilds every logged cell deterministically and compares `n_iter` exactly
+and the final gap within the Stage 1 criterion (`|diff| <= 1e-8`). Wall time is
+NOT verified (noisy on this host, indicative only); numpy/scipy version
+mismatches are reported as warnings because determinism across versions is not
+guaranteed — the recomputation itself decides pass/fail. The shipped Stage 2
+bundle verifies 18/18 cells on the host and inside the container.
+
+### Docker (local only, no deployment)
+
+```bash
+docker build -t convex-optimization:local .          # or: make docker-build
+docker run --rm --network none convex-optimization:local   # offline smoke: one CLI solve
+docker compose run --rm smoke                        # same smoke via compose (network_mode: none)
+docker compose down
+```
+
+The image installs only from `requirements-lock.txt` (~525 MB) and defaults to
+one offline solve (logistic + nesterov). The Python 3.11 install failure is
+reproducible with `docker build --build-arg PYTHON_TAG=3.11`.
+
 Other targets: `make lint` (ruff check + format check), `make format`,
+`make verify` (bundle check above), `make docker-build`, `make smoke`,
 `make clean` (removes caches and `.venv`). CI runs lint + tests on every push
-and pull request via GitHub Actions. Do not commit secrets, API keys, or
-large artifacts.
+and pull request, then builds the image and runs the offline smoke solve in it
+as build proof (no registry push). Do not commit secrets, API keys, or large
+artifacts.
