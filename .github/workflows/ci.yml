@@ -43,4 +43,5 @@ jobs:
             -X POST http://localhost:8000/solve \
             -H "Content-Type: application/json" \
             -d '{"problem":"logistic","method":"nesterov"}' | grep -o '"converged":true'
+          curl --fail --silent --show-error http://localhost:8000/metrics | grep -o '"convergence_failures":[0-9]*'
           docker rm -f api

@@ -21,7 +21,9 @@ services:
     # Normal networking is REQUIRED here: a published port is incompatible
     # with network_mode "none". The solve itself still needs no network
     # (seeded synthetic problems; CPU-only ground truth at request time).
-    command: ["uvicorn", "convex_optimization.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    # --no-access-log: the Stage 5 structured JSON log lines (stdout) are the
+    # sole log stream; uvicorn's non-JSON access log is suppressed.
+    command: ["uvicorn", "convex_optimization.app:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
 
   smoke:
     build:

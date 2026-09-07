@@ -59,10 +59,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 ## Stage 5 - Monitor
 
-- [ ] Structured logging of solve requests, iterations, and latency.
-- [ ] Metrics endpoint exposing: request count, latency percentiles, error rate, convergence-failure rate.
+- [x] Structured logging of solve requests, iterations, and latency.
+- [x] Metrics endpoint exposing: request count, latency percentiles, error rate, convergence-failure rate.
 - [ ] Optional: Prometheus/Grafana dashboard.
-- [ ] Document "what could degrade" (ill-conditioned inputs, numerical instability, solver failures).
+- [x] Document "what could degrade" (ill-conditioned inputs, numerical instability, solver failures).
 
 **Acceptance:** A reviewer can see how the service is observed and what signals would indicate a problem.
 

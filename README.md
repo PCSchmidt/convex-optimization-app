@@ -170,8 +170,32 @@ indicative only.
   on Python 3.11 because numpy 2.5.3 requires Python >= 3.12; the failure is reproducible with
   `docker build --build-arg PYTHON_TAG=3.11` (documented in the Dockerfile header).
 - Serving (Stage 4) is a local, single-user demo API behind Docker Compose: no TLS, no auth,
-  no rate limiting, not exposed publicly. Monitoring is still unimplemented (planned Stage 5).
-  The Stage 3 offline smoke solve (network_mode none) is unchanged.
+  no rate limiting, not exposed publicly. Observability (Stage 5) is local compose
+  observability on seeded synthetic problems: structured JSON logs on stdout plus an
+  in-process `/metrics` JSON endpoint whose counters RESET ON RESTART. There is no
+  persistence, no Prometheus/Grafana scrape stack, no dashboards, and NO alerting — this is
+  not production monitoring. The Stage 3 offline smoke solve (network_mode none) is unchanged.
+- What could degrade, and the log/metric signal each failure leaves (Stage 5):
+  - **Ill-conditioned inputs.** The API fixes the problems, but a future problem with a
+    large condition number `kappa = L/mu` needs many more iterations at fixed step `1/L`;
+    at `max_iter = 2000` it can simply run out. Signal: `/solve` returns 200 with
+    `converged=false` -> `solve.convergence_failures` and
+    `solve.convergence_failure_rate` rise in `/metrics`, and the JSON log line shows
+    `"converged": false` with `iterations` pinned at 2000.
+  - **Numerical instability.** In float64 a monotone first-order method can stall
+    (the documented Armijo stall) or overflow (e.g. `exp` in the logistic loss far from
+    the optimum). A stall shows up as above (`converged=false`, huge iteration count);
+    an overflow or NaN raises and surfaces as HTTP 500 -> `status_counts["5xx"]` and
+    `errors.rate_5xx` in `/metrics`, log line `"error_class": "server_error"`.
+  - **Solver non-convergence (max_iter hit).** Same signal as ill-conditioning: a 200
+    solve with `converged=false`. By definition this is the ONLY thing counted as a
+    convergence failure; it means the fixed Stage 1 settings (`tol=1e-10`,
+    `max_iter=2000`, `1/L` step) did not reach the criterion — no retry, no retune.
+  - **Inapplicable (problem, method) pairs** (e.g. lasso + nesterov). Rejected with 422
+    before any solve. Signal: `status_counts["4xx"]`, `errors.rate_4xx`, and the log line
+    `"error_class": "inapplicable_pair"`. Malformed bodies (bad `tail`, unknown names)
+    are 4xx with `"error_class": "validation_error"`. These are request errors, NEVER
+    convergence failures.
 - Legacy reference code in `legacy/` is read-only and is not part of the
   installed package.
 
@@ -239,6 +263,38 @@ Endpoints (interactive docs at `/docs`):
     CPU-only at request time), `final_residual`, `ground_truth_source`,
     `history_tail` (last rows as `{iteration, objective, residual}`).
 
+### Stage 5 observability (LOCAL compose only — not production monitoring)
+
+Stage 5 adds two artifacts over the UNCHANGED Stage 4 API (additive only: same
+endpoints, same 422 behavior, still no tol/max_iter/seed knobs):
+
+- **Structured JSON logging.** Every request (including `/health` and
+  `/metrics`) emits ONE single-line JSON record on stdout with `request_id`,
+  `endpoint`, `status`, `latency_ms`, `problem`, `method`, `iterations`,
+  `converged`, and `error_class`. Stdlib `logging` only — no new dependency.
+  Iterate vectors and history arrays are never logged (bounded counts, flags,
+  and latencies only). No secrets exist in this app and none are logged. The
+  compose `api` command runs uvicorn with `--no-access-log` so these JSON
+  lines are the sole stdout log stream.
+- **`GET /metrics` (JSON).** In-process counters (`observability.py`):
+  `requests_total`, per-endpoint counts, `status_counts` (2xx/4xx/5xx),
+  `errors` (4xx/5xx totals and rates), `latency_ms` (mean, p50/p90/p99, max
+  over the most recent 10,000 requests), and the solver block `solve` with
+  the convex-specific counters: `convergence_failures` and
+  `convergence_failure_rate`.
+
+  **Convergence-failure definition (precise):** a `/solve` request that
+  completed with HTTP 200 but `converged=false` — the method exhausted its
+  fixed `max_iter = 2000` iterations without meeting the Stage 1 stopping
+  criterion (residual <= `tol = 1e-10`). HTTP 4xx (request validation,
+  inapplicable pairs) count as ERRORS, never as convergence failures; HTTP
+  5xx counts as a server error, also not a convergence failure. The rate is
+  `convergence_failures / solve.success_count`.
+- **Scope honesty.** Counters are in-process and RESET ON RESTART; there is
+  no persistence, no Prometheus/Grafana stack, no dashboard, and no
+  alerting. This is local compose observability on seeded synthetic problems
+  so a reviewer can SEE the signals — not production monitoring.
+
 Environment variables: the app has no secrets and needs no keys. The only
 configuration knob is `PORT` — the host port published by compose for the
 `api` service (default 8000; the container always listens on 8000
@@ -258,6 +314,7 @@ docker compose build                # or: make docker-build
 docker compose up -d api            # serves on http://localhost:${PORT:-8000}
 curl --noproxy '*' http://localhost:8000/health
 curl --noproxy '*' -X POST http://localhost:8000/solve   -H 'Content-Type: application/json'   -d '{"problem":"logistic","method":"nesterov"}'
+curl --noproxy '*' http://localhost:8000/metrics
 docker compose down
 ```
 
