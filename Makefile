@@ -7,7 +7,7 @@ else
     VENV_PY := .venv/bin/python
 endif
 
-.PHONY: setup test lint format clean solve
+.PHONY: setup test lint format clean solve eval
 
 setup:
 	python -m venv .venv
@@ -22,6 +22,12 @@ test:
 #   make solve ARGS="--problem lasso --method fista"
 solve:
 	PYTHONPATH=src $(VENV_PY) -m convex_optimization.cli $(ARGS)
+
+# Stage 2 benchmark: measures the Stage 1 methods AS-IS across seeds and
+# writes experiments/run_log.csv + experiments/run_log.json. NOT part of
+# `make test`: wall-time measurement is too noisy for CI assertions.
+eval:
+	PYTHONPATH=src $(VENV_PY) experiments/run_benchmark.py
 
 lint:
 	$(VENV_PY) -m ruff check .

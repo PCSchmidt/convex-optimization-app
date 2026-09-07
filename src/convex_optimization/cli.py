@@ -13,26 +13,41 @@ from __future__ import annotations
 
 import argparse
 
-from .methods import fista, gradient_descent, nesterov_ag
-from .problems import make_problem
+from .methods import fista, gradient_descent, ista, nesterov_ag
+from .problems import Problem, make_problem
 
-METHODS = ("gd", "nesterov", "fista")
+METHODS = ("gd", "nesterov", "fista", "ista")
 PROBLEMS = ("least_squares", "lasso", "logistic")
 
 # Which (problem, method) pairs are mathematically meaningful. The methods are
 # first-order: gradient descent and Nesterov need a smooth objective; FISTA
-# handles the nonsmooth L1 term via the proximal map (and is the designated
-# method for the Lasso).
+# handles the nonsmooth L1 term via the proximal map (FISTA and the
+# non-accelerated ISTA, which differ only in the momentum sequence).
 APPLICABLE = {
     "least_squares": ("gd", "nesterov"),
-    "lasso": ("fista",),
+    "lasso": ("fista", "ista"),
     "logistic": ("gd", "nesterov"),
 }
 
 
-def solve(problem_name: str, method: str, max_iter: int, tol: float):
-    """Run one (problem, method) pair and return (problem, result)."""
-    problem = make_problem(problem_name)
+def solve(
+    problem_name: str,
+    method: str,
+    max_iter: int = 2000,
+    tol: float = 1e-10,
+    problem: Problem | None = None,
+):
+    """Run one (problem, method) pair and return (problem, result).
+
+    ``problem`` optionally supplies a pre-built instance (e.g. generated with
+    a non-default seed by the benchmark runner). When ``None``, the Stage 1
+    default-seeded problem is built via ``make_problem``. The dispatch and
+    all step-size constants are identical in both paths.
+    """
+    if problem is None:
+        problem = make_problem(problem_name)
+    else:
+        assert problem.name == problem_name, "problem instance does not match problem_name"
     if method not in APPLICABLE[problem_name]:
         raise ValueError(
             f"method {method!r} is not applicable to problem {problem_name!r}; "
@@ -60,8 +75,18 @@ def solve(problem_name: str, method: str, max_iter: int, tol: float):
             max_iter=max_iter,
             tol=tol,
         )
-    else:  # fista
+    elif method == "fista":
         result = fista(
+            problem.objective,
+            problem.smooth_gradient,
+            problem.prox,
+            problem.x0,
+            smooth_lipschitz=problem.lipschitz,
+            max_iter=max_iter,
+            tol=tol,
+        )
+    else:  # ista
+        result = ista(
             problem.objective,
             problem.smooth_gradient,
             problem.prox,

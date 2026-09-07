@@ -1,0 +1,230 @@
+{
+  "date_utc": "2026-09-07T17:05:17Z",
+  "git_commit": "fe14e0d+dirty",
+  "numpy_version": "2.5.3",
+  "scipy_version": "1.18.1",
+  "settings": {
+    "tol": 1e-10,
+    "max_iter": 2000,
+    "wall_time_reps": 3,
+    "step_sizes": "Stage 1 as-is: 1/L everywhere; Nesterov momentum (sqrt(kappa)-1)/(sqrt(kappa)+1); no tuning"
+  },
+  "seeds": {
+    "least_squares": [
+      0,
+      1,
+      2
+    ],
+    "lasso": [
+      0,
+      1,
+      2
+    ],
+    "logistic": [
+      1,
+      2,
+      3
+    ]
+  },
+  "lasso_truth": "ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9)",
+  "rows": [
+    {
+      "problem": "least_squares",
+      "seed": 0,
+      "method": "gd",
+      "n_iter": 1445,
+      "wall_time_s": "0.014563",
+      "final_gap": "1.075529e-16",
+      "final_residual": "9.940083e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "least_squares",
+      "seed": 1,
+      "method": "gd",
+      "n_iter": 1475,
+      "wall_time_s": "0.015232",
+      "final_gap": "1.040834e-16",
+      "final_residual": "9.932979e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "least_squares",
+      "seed": 2,
+      "method": "gd",
+      "n_iter": 668,
+      "wall_time_s": "0.006834",
+      "final_gap": "-1.058181e-16",
+      "final_residual": "9.902701e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "least_squares",
+      "seed": 0,
+      "method": "nesterov",
+      "n_iter": 192,
+      "wall_time_s": "0.001689",
+      "final_gap": "2.289835e-16",
+      "final_residual": "9.720524e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "least_squares",
+      "seed": 1,
+      "method": "nesterov",
+      "n_iter": 200,
+      "wall_time_s": "0.001837",
+      "final_gap": "-5.204170e-18",
+      "final_residual": "8.941074e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "least_squares",
+      "seed": 2,
+      "method": "nesterov",
+      "n_iter": 129,
+      "wall_time_s": "0.001122",
+      "final_gap": "-2.428613e-17",
+      "final_residual": "8.730048e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "lasso",
+      "seed": 0,
+      "method": "fista",
+      "n_iter": 1436,
+      "wall_time_s": "0.027208",
+      "final_gap": "2.220446e-16",
+      "final_residual": "5.653595e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows); ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9)"
+    },
+    {
+      "problem": "lasso",
+      "seed": 1,
+      "method": "fista",
+      "n_iter": 950,
+      "wall_time_s": "0.022249",
+      "final_gap": "-6.645047e-10",
+      "final_residual": "8.069653e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows); ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9); final objective slightly BELOW the approximate smoothed reference; expected because the eps-smoothing biases the reference f* upward"
+    },
+    {
+      "problem": "lasso",
+      "seed": 2,
+      "method": "fista",
+      "n_iter": 775,
+      "wall_time_s": "0.014198",
+      "final_gap": "2.220446e-16",
+      "final_residual": "6.054237e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows); ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9)"
+    },
+    {
+      "problem": "lasso",
+      "seed": 0,
+      "method": "ista",
+      "n_iter": 1451,
+      "wall_time_s": "0.025080",
+      "final_gap": "0.000000e+00",
+      "final_residual": "9.942663e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows); ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9)"
+    },
+    {
+      "problem": "lasso",
+      "seed": 1,
+      "method": "ista",
+      "n_iter": 1187,
+      "wall_time_s": "0.019652",
+      "final_gap": "-6.645047e-10",
+      "final_residual": "9.850237e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows); ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9); final objective slightly BELOW the approximate smoothed reference; expected because the eps-smoothing biases the reference f* upward"
+    },
+    {
+      "problem": "lasso",
+      "seed": 2,
+      "method": "ista",
+      "n_iter": 662,
+      "wall_time_s": "0.013446",
+      "final_gap": "2.220446e-16",
+      "final_residual": "9.679956e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows); ground truth = eps=1e-10 smoothed SciPy L-BFGS-B reference (approximate, bias < ~1e-9)"
+    },
+    {
+      "problem": "logistic",
+      "seed": 1,
+      "method": "gd",
+      "n_iter": 62,
+      "wall_time_s": "0.002064",
+      "final_gap": "0.000000e+00",
+      "final_residual": "9.322330e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "logistic",
+      "seed": 2,
+      "method": "gd",
+      "n_iter": 71,
+      "wall_time_s": "0.002331",
+      "final_gap": "5.551115e-17",
+      "final_residual": "8.182668e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "logistic",
+      "seed": 3,
+      "method": "gd",
+      "n_iter": 62,
+      "wall_time_s": "0.002134",
+      "final_gap": "0.000000e+00",
+      "final_residual": "9.715482e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "logistic",
+      "seed": 1,
+      "method": "nesterov",
+      "n_iter": 33,
+      "wall_time_s": "0.000878",
+      "final_gap": "5.551115e-17",
+      "final_residual": "8.213008e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "logistic",
+      "seed": 2,
+      "method": "nesterov",
+      "n_iter": 35,
+      "wall_time_s": "0.000819",
+      "final_gap": "5.551115e-17",
+      "final_residual": "1.809285e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    },
+    {
+      "problem": "logistic",
+      "seed": 3,
+      "method": "nesterov",
+      "n_iter": 35,
+      "wall_time_s": "0.001287",
+      "final_gap": "0.000000e+00",
+      "final_residual": "7.289715e-11",
+      "converged": "True",
+      "notes": "wall_time = median of 3 runs, indicative only (noisy on Windows)"
+    }
+  ]
+}

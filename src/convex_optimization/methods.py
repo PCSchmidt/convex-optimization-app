@@ -8,6 +8,8 @@ Methods
 - ``gradient_descent``: fixed step size or Armijo backtracking line search.
 - ``nesterov_ag``: Nesterov accelerated gradient with the constant momentum
   tuned for L-smooth, mu-strongly-convex objectives.
+- ``ista``: non-accelerated proximal gradient for composite objectives
+  ``smooth + nonsmooth`` (FISTA minus the momentum sequence; used for Lasso).
 - ``fista``: accelerated proximal gradient (Beck-Teboulle) for composite
   objectives ``smooth + nonsmooth`` (used for Lasso / ISTA-FISTA).
 
@@ -196,6 +198,61 @@ def fista(
         t_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t * t))
         y = x_new + ((t - 1.0) / t_new) * (x_new - x)
         x, t = x_new, t_new
+        residual = _record(history, x, objective, residual_fn)
+        converged = residual <= tol
+
+    return _finish(x, history, len(history) - 1, tol, converged)
+
+
+def ista(
+    objective,
+    smooth_gradient,
+    prox,
+    x0: np.ndarray,
+    smooth_lipschitz: float,
+    max_iter: int = 5000,
+    tol: float = 1e-10,
+    residual_fn=None,
+) -> Result:
+    """Non-accelerated proximal gradient (ISTA) for ``min g(x) + h(x)``.
+
+    ISTA is exactly FISTA without the momentum sequence: iterate
+
+        x_{k+1} = prox_{h / L}( x_k - grad g(x_k) / L )
+
+    with the same fixed step ``1 / smooth_lipschitz`` (and therefore the same
+    ``prox`` at step ``1 / L``) as FISTA. Without acceleration the guaranteed
+    rate is O(1/k) instead of FISTA's O(1/k^2), but the proximal-gradient map
+    with step ``1 / L`` is monotone for the full objective, so the recorded
+    objective values decrease at every step.
+
+    ``ista`` exists so the benchmark can compare accelerated vs
+    non-accelerated proximal gradient with everything else held identical:
+    same step size, same tolerance, same stopping rule, same residual.
+    No step size or tolerance was changed for the benchmark.
+
+    ``residual_fn`` defaults to the norm of the scaled prox-gradient map,
+    ``||x - prox(x - grad g(x) / L)|| * L``, identical to FISTA's.
+    """
+    if smooth_lipschitz <= 0:
+        raise ValueError("smooth_lipschitz must be positive")
+
+    def prox_grad_norm(x: np.ndarray) -> float:
+        g = np.asarray(smooth_gradient(x), dtype=float)
+        return float(np.linalg.norm(x - prox(x - g / smooth_lipschitz)) * smooth_lipschitz)
+
+    if residual_fn is None:
+        residual_fn = prox_grad_norm
+
+    x = np.asarray(x0, dtype=float).copy()
+    history = History()
+    residual = _record(history, x, objective, residual_fn)
+    converged = residual <= tol
+
+    for _ in range(max_iter):
+        if converged:
+            break
+        x = np.asarray(prox(x - smooth_gradient(x) / smooth_lipschitz), dtype=float)
         residual = _record(history, x, objective, residual_fn)
         converged = residual <= tol
 

@@ -8,7 +8,7 @@ solver, never as the method.
 """
 
 from .history import History, Result
-from .methods import fista, gradient_descent, nesterov_ag
+from .methods import fista, gradient_descent, ista, nesterov_ag
 from .problems import (
     GroundTruth,
     Problem,
@@ -27,6 +27,7 @@ __all__ = [
     "Result",
     "fista",
     "gradient_descent",
+    "ista",
     "make_lasso",
     "make_least_squares",
     "make_logistic",
