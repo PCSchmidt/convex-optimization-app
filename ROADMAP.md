@@ -19,10 +19,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 ## Stage 1 - Build (optimization core)
 
-- [ ] Implement classic methods: gradient descent, accelerated (e.g., Nesterov), and at least one proximal/ADMM method.
-- [ ] Define a set of standard convex problems (e.g., least squares, logistic regression, L1-regularized) as benchmarks.
-- [ ] Ground truth: compare against SciPy solvers on the same problems.
-- [ ] Convergence tracking: record objective value and gradient norm per iteration.
+- [x] Implement classic methods: gradient descent, accelerated (e.g., Nesterov), and at least one proximal/ADMM method.
+- [x] Define a set of standard convex problems (e.g., least squares, logistic regression, L1-regularized) as benchmarks.
+- [x] Ground truth: compare against SciPy solvers on the same problems.
+- [x] Convergence tracking: record objective value and gradient norm per iteration.
 
 **Acceptance:** Each method converges on the benchmark problems and matches ground-truth solutions within tolerance.
 
