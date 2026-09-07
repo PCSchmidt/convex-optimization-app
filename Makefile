@@ -7,7 +7,7 @@ else
     VENV_PY := .venv/bin/python
 endif
 
-.PHONY: setup test lint format clean
+.PHONY: setup test lint format clean solve
 
 setup:
 	python -m venv .venv
@@ -17,6 +17,11 @@ setup:
 test:
 	$(VENV_PY) -m pytest -q
 	$(VENV_PY) -m ruff check .
+
+# Run ONE problem with ONE method, offline:
+#   make solve ARGS="--problem lasso --method fista"
+solve:
+	PYTHONPATH=src $(VENV_PY) -m convex_optimization.cli $(ARGS)
 
 lint:
 	$(VENV_PY) -m ruff check .

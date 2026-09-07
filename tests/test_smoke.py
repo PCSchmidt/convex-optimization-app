@@ -12,4 +12,4 @@ def test_python_version_floor():
 def test_package_imports_and_exposes_version():
     assert hasattr(convex_optimization, "__version__")
     assert isinstance(convex_optimization.__version__, str)
-    assert convex_optimization.__version__ == "0.1.0"
+    assert convex_optimization.__version__ == "0.2.0"

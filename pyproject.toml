@@ -1,11 +1,14 @@
 [project]
 name = "convex_optimization"
-version = "0.1.0"
+version = "0.2.0"
 description = "Convex optimization algorithms with reproducible benchmarking against SciPy solvers."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-dependencies = []
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
 
 [project.optional-dependencies]
 dev = [

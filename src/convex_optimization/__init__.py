@@ -1,10 +1,35 @@
 """Convex optimization algorithms with reproducible benchmarking.
 
-This package is the Stage 0 scaffold of the optimization + rigor pillar.
-The intended pillar functionality (gradient descent variants, accelerated
-and proximal/ADMM methods, and reproducible benchmarks against SciPy
-solvers) is NOT yet implemented. The module currently only exposes its
-version while the project foundation is put in place.
+Stage 1 core: first-order methods implemented from scratch in NumPy
+(gradient descent, Nesterov accelerated gradient, FISTA for the Lasso),
+deterministic benchmark problems, per-iteration convergence history, and
+SciPy / closed-form ground truths. SciPy is used only as a reference
+solver, never as the method.
 """
 
-__version__ = "0.1.0"
+from .history import History, Result
+from .methods import fista, gradient_descent, nesterov_ag
+from .problems import (
+    GroundTruth,
+    Problem,
+    make_lasso,
+    make_least_squares,
+    make_logistic,
+    make_problem,
+)
+
+__version__ = "0.2.0"
+
+__all__ = [
+    "GroundTruth",
+    "History",
+    "Problem",
+    "Result",
+    "fista",
+    "gradient_descent",
+    "make_lasso",
+    "make_least_squares",
+    "make_logistic",
+    "make_problem",
+    "nesterov_ag",
+]
