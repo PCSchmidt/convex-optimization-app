@@ -22,10 +22,25 @@ Honesty rules baked in:
 
 Usage (from the repo root):
     make eval        # or: PYTHONPATH=src .venv/Scripts/python.exe experiments/run_benchmark.py
+
+Stage 3 artifact bundle: the written experiments/run_log.json IS the bundle
+manifest. It carries the identity needed to regenerate the results: per-row
+(problem, seed, method, n_iter, final gap, converged), the settings
+(tol=1e-10, max_iter=2000, wall_time_reps), the numpy/scipy versions, and the
+git commit. Verify it offline with:
+
+    make verify      # or: PYTHONPATH=src .venv/Scripts/python.exe experiments/run_benchmark.py --verify experiments/run_log.json
+
+The verifier rebuilds every logged cell deterministically and compares n_iter
+exactly and the final gap within the Stage 1 criterion (|diff| <= 1e-8). Wall
+time is NOT verified (noisy on this host, indicative only). Environment
+version/commit identity is reported; a numpy/scipy version mismatch is a
+warning (determinism across versions is not guaranteed), not an error.
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import datetime as dt
 import json
@@ -111,7 +126,7 @@ def run_cell(problem_name: str, seed: int, method: str) -> dict:
     }
 
 
-def main() -> int:
+def run_benchmark() -> int:
     rows = []
     for problem_name, seeds in SEEDS.items():
         for method in cli.APPLICABLE[problem_name]:
@@ -177,6 +192,81 @@ def main() -> int:
         json.dump(meta, f, indent=2)
     print(f"wrote {csv_path} and {json_path} ({len(rows)} rows)")
     return 0
+
+
+def verify_log(path: Path, gap_tol: float = 1e-8) -> int:
+    """Recompute every cell in a saved run-log bundle and compare.
+
+    n_iter is the deterministic signal and must match EXACTLY. The final gap
+    is compared to the recorded value within ``gap_tol`` (the Stage 1
+    criterion; recorded gaps are rounded to 6 significant digits). Wall time
+    is deliberately not compared. For the lasso rows the gap is still measured
+    against the eps-smoothed approximate SciPy reference recorded in the
+    bundle, unchanged from Stage 2.
+    """
+    with open(path, encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    print(f"verify: {path}")
+    print(f"  recorded identity: date_utc={manifest.get('date_utc')} git_commit={manifest.get('git_commit')}")
+    for lib, current in (("numpy", np.__version__), ("scipy", scipy.__version__)):
+        recorded = manifest.get(f"{lib}_version")
+        status = "match" if recorded == current else (
+            "MISMATCH (determinism across versions is not guaranteed; treating as a warning)"
+        )
+        print(f"  {lib}: recorded={recorded} current={current} -> {status}")
+
+    settings = manifest.get("settings", {})
+    tol = float(settings.get("tol", 1e-10))
+    max_iter = int(settings.get("max_iter", 2000))
+    rows = manifest.get("rows", [])
+    failures = 0
+    for row in rows:
+        problem = BUILDERS[row["problem"]](seed=int(row["seed"]))
+        _, result = cli.solve(row["problem"], row["method"], max_iter=max_iter, tol=tol, problem=problem)
+        gap = result.final_objective_gap(problem.ground_truth.f)
+        ok_iter = result.n_iter == int(row["n_iter"])
+        ok_gap = abs(gap - float(row["final_gap"])) <= gap_tol
+        ok_conv = str(result.converged) == str(row["converged"])
+        ok = ok_iter and ok_gap and ok_conv
+        failures += 0 if ok else 1
+        status = "PASS" if ok else "FAIL"
+        detail = ""
+        if not ok:
+            bits = []
+            if not ok_iter:
+                bits.append(f"n_iter recomputed={result.n_iter} recorded={row['n_iter']}")
+            if not ok_gap:
+                bits.append(f"gap recomputed={gap:.6e} recorded={row['final_gap']}")
+            if not ok_conv:
+                bits.append(f"converged recomputed={result.converged} recorded={row['converged']}")
+            detail = " | " + "; ".join(bits)
+        print(
+            f"  {status} {row['problem']:>14s} seed={row['seed']} {row['method']:>8s} "
+            f"n_iter={result.n_iter}{detail}"
+        )
+    print(
+        f"{len(rows) - failures}/{len(rows)} cells verified "
+        f"(n_iter exact, |gap diff| <= {gap_tol:g}); wall time not verified "
+        f"(noisy on this host, indicative only)"
+    )
+    return 1 if failures else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Stage 2 benchmark runner (default) / Stage 3 bundle verifier (--verify)."
+    )
+    parser.add_argument(
+        "--verify",
+        metavar="RUN_LOG_JSON",
+        default=None,
+        help="verify a saved run-log bundle (e.g. experiments/run_log.json) instead of running the benchmark",
+    )
+    args = parser.parse_args(argv)
+    if args.verify is not None:
+        return verify_log(Path(args.verify))
+    return run_benchmark()
 
 
 if __name__ == "__main__":

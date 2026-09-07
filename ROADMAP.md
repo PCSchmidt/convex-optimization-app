@@ -41,8 +41,8 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 > fails (reproduced via `docker build --build-arg PYTHON_TAG=3.11`). The lockfile is unchanged.
 
 - [ ] Code versioning: tag releases; pin numerical library versions.
-- [ ] Artifact bundle: documented way to store and load experiment configs and results.
-- [ ] `requirements.lock` and a reproducible build path.
+- [x] Artifact bundle: documented way to store and load experiment configs and results.
+- [x] `requirements.lock` and a reproducible build path.
 - [ ] Containerize the app (Dockerfile) and provide `docker-compose.yml`.
 - [ ] CI/CD pipeline that builds, tests, and produces a tagged artifact.
 
