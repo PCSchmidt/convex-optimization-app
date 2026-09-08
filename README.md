@@ -363,6 +363,34 @@ ports are configurable: `PORT` (api, default 8000), `PROMETHEUS_PORT`
 listens on 8000 internally. Default compose path is fully offline: the solve
 endpoints make no network calls.
 
+### Phase 7 validation evidence (executed 2026-09-08, Git Bash on Windows)
+
+Executed against the running stack (api on host port 8010 because a parallel
+process occupied 8000 — the env override exists for exactly this): `make
+test` (60 passed, 2 warnings; ruff check passed) and `make lint` (ruff check
++ format check passed) stayed green after the Phase 6 changes (only additive
+docstring/compose changes to backend code). Runtime evidence, all commands
+and key outputs:
+
+- `curl http://localhost:8010/health` → `200 {"status":"ok"}`.
+- `curl http://localhost:9092/api/v1/targets` → target `convex-optimization-api`
+  at `http://api:8000/metrics/prometheus`, `health: "up"`.
+- `curl 'http://localhost:9092/api/v1/query?query=sum(convex_optimization_solves_total)'`
+  → `"value": [.., "112"]` (112 HTTP 200 solves from generated traffic);
+  `sum(rate(convex_optimization_solves_total[5m]))` ≈ `0.088` req/s at capture.
+- `curl -u admin:admin http://localhost:3002/api/datasources/uid/convex-prom/health`
+  → `200 {"status":"OK", "message":"Successfully queried the Prometheus API."}`.
+- `curl -u admin:admin http://localhost:3002/api/dashboards/uid/convex-optimization-app`
+  → `200`, 14 panels, folder "Convex Optimization".
+- Every dashboard panel query was validated against the live Prometheus API
+  (with `$__rate_interval` substituted by `5m`): all parse and return data
+  after traffic; "Convergence failures" is intentionally empty (zero failures
+  occurred — 100% convergence) and shows its no-data note.
+
+Human screenshot pointers: Grafana dashboard at
+`http://localhost:3002/d/convex-optimization-app` (login `admin`/`admin`),
+Prometheus at `http://localhost:9092`, API on `${PORT:-8000}` (currently 8010).
+
 ### Deployment runbook (local Docker Compose)
 
 From a clean clone (Windows Git Bash; for POSIX shells the same commands work
