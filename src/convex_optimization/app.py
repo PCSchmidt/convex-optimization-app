@@ -25,8 +25,13 @@ Interactive docs: http://localhost:8000/docs
 Stage 5 observability (LOCAL ONLY): every request emits one structured JSON
 log line to stdout, and ``GET /metrics`` exposes in-process counters (request
 count, latency percentiles, 4xx/5xx error rates, and the convex-specific
-convergence-failure rate). Counters reset on restart; there is no Prometheus,
-Grafana, alerting, or persistence. See ``observability.py``.
+convergence-failure rate). Counters reset on restart; there is no Grafana,
+alerting, or persistence. See ``observability.py``.
+
+Phase 2 shared contract: ``GET /metrics/prometheus`` additionally exposes the
+generic Prometheus text-exposition families (requests_total, errors_total,
+request_latency_seconds, up) written by ``prometheus.py`` -- stdlib only, no
+prometheus_client. The JSON ``GET /metrics`` snapshot is unchanged.
 """
 
 from __future__ import annotations
@@ -37,11 +42,13 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
+from starlette.routing import Match
 
 from .cli import APPLICABLE, METHODS, PROBLEMS, solve
 from .observability import ERROR_INAPPLICABLE, ERROR_SERVER, ERROR_VALIDATION, metrics
+from .prometheus import CONTENT_TYPE, UNMATCHED_ENDPOINT, prometheus_metrics
 
 app = FastAPI(
     title="convex-optimization-app",
@@ -60,8 +67,51 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     Validation errors are request ERRORS for the metrics; they are never
     convergence failures (only a completed 200 solve can fail to converge).
     """
-    metrics.record(request.url.path, 422, 0.0, error_class=ERROR_VALIDATION)
+    endpoint = _route_template(request)
+    metrics.record(endpoint, 422, 0.0, error_class=ERROR_VALIDATION)
+    prometheus_metrics.record_error(endpoint, request.method, ERROR_VALIDATION)
     return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
+
+
+def _route_template(request: Request) -> str:
+    """Route template for the request (bounded label), or ``unmatched``.
+
+    Starlette 1.6 does not put the matched route in the ASGI scope, so we
+    re-match against the declared routes. The result is always a route
+    template (e.g. ``/solve``) or the fixed token ``unmatched`` -- never a
+    concrete URL path -- keeping the Prometheus ``endpoint`` label bounded.
+    """
+    for route in app.routes:
+        match, _ = route.matches(request.scope)
+        if match == Match.FULL:
+            return route.path
+    return UNMATCHED_ENDPOINT
+
+
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next) -> Response:
+    """Feed the Phase 2 Prometheus families (requests_total + latency).
+
+    Errors are NOT counted here: ``errors_total`` is recorded only at the
+    explicit error-class sites (validation handler, inapplicable pair, solver
+    server error) so each error is counted exactly once with its bounded
+    ``error_class``. An unhandled exception is counted as one 500 request.
+    """
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        prometheus_metrics.record_request(
+            _route_template(request), request.method, 500, time.perf_counter() - start
+        )
+        raise
+    prometheus_metrics.record_request(
+        _route_template(request),
+        request.method,
+        response.status_code,
+        time.perf_counter() - start,
+    )
+    return response
 
 
 # Upper bound on the returned history tail so responses stay small and
@@ -125,6 +175,22 @@ def metrics_endpoint() -> dict:
     return snapshot
 
 
+@app.get("/metrics/prometheus")
+def prometheus_metrics_endpoint() -> Response:
+    """Phase 2 shared contract: Prometheus text exposition (generic families).
+
+    Same four families as every sibling portfolio app: ``requests_total``,
+    ``errors_total``, ``request_latency_seconds`` (histogram), and ``up``,
+    with the ``convex_optimization_`` prefix and low-cardinality labels
+    (route-template endpoint, HTTP verb, status, bounded error_class).
+    Rendered by the stdlib-only writer in ``prometheus.py``; the JSON
+    ``GET /metrics`` snapshot above is unchanged.
+    """
+    body = prometheus_metrics.render()  # render first: do not count this call
+    metrics.record("/metrics/prometheus", 200, 0.0)
+    return Response(content=body, media_type=CONTENT_TYPE)
+
+
 @app.post(
     "/solve",
     response_model=SolveResponse,
@@ -167,6 +233,7 @@ def solve_endpoint(request: SolveRequest) -> SolveResponse:
             method=request.method,
             error_class=ERROR_INAPPLICABLE,
         )
+        prometheus_metrics.record_error("/solve", "POST", ERROR_INAPPLICABLE)
         raise HTTPException(
             status_code=422,
             detail={
@@ -190,6 +257,7 @@ def solve_endpoint(request: SolveRequest) -> SolveResponse:
             method=request.method,
             error_class=ERROR_SERVER,
         )
+        prometheus_metrics.record_error("/solve", "POST", ERROR_SERVER)
         raise
     tail_rows = result.history.tail(min(request.tail, MAX_TAIL))
     response = SolveResponse(

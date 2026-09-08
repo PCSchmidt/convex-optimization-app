@@ -290,10 +290,25 @@ endpoints, same 422 behavior, still no tol/max_iter/seed knobs):
   inapplicable pairs) count as ERRORS, never as convergence failures; HTTP
   5xx counts as a server error, also not a convergence failure. The rate is
   `convergence_failures / solve.success_count`.
+- **`GET /metrics/prometheus` (text).** Phase 2 shared observability
+  contract (`prometheus.py`, STDLIB ONLY — no `prometheus_client`, no new
+  dependencies): Prometheus text exposition with `Content-Type: text/plain;
+  version=0.0.4; charset=utf-8` for the four GENERIC families
+  `convex_optimization_requests_total` (labels: endpoint, method, status),
+  `convex_optimization_errors_total` (labels: endpoint, method, error_class
+  — the same bounded taxonomy as the JSON logs),
+  `convex_optimization_request_latency_seconds` (histogram over endpoint and
+  method, prometheus_client default buckets 0.005s–10s), and
+  `convex_optimization_up` (1 while serving). Labels are low-cardinality by
+  construction: `endpoint` is a route template (or the fixed token
+  `unmatched`), never a URL. The JSON `GET /metrics` snapshot above is
+  UNCHANGED. Domain counters (convergence failures, iterations) are
+  deliberately NOT exported here yet.
 - **Scope honesty.** Counters are in-process and RESET ON RESTART; there is
-  no persistence, no Prometheus/Grafana stack, no dashboard, and no
-  alerting. This is local compose observability on seeded synthetic problems
-  so a reviewer can SEE the signals — not production monitoring.
+  no persistence, no Grafana stack, no dashboard, and no alerting (the
+  Prometheus text endpoint above is a scrape target only, written by hand).
+  This is local compose observability on seeded synthetic problems so a
+  reviewer can SEE the signals — not production monitoring.
 
 Environment variables: the app has no secrets and needs no keys. The only
 configuration knob is `PORT` — the host port published by compose for the

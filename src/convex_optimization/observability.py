@@ -1,8 +1,11 @@
 """Stage 5 observability: structured logs + in-process counters (LOCAL ONLY).
 
 This is convex-app-specific serving observability for the Stage 4 API. It is
-NOT a production monitoring stack: no Prometheus, no Grafana, no alerting, no
-persistence. All state lives in this process and RESETS ON RESTART.
+NOT a production monitoring stack: no Grafana, no alerting, no persistence.
+All state lives in this process and RESETS ON RESTART. (The Phase 2
+Prometheus text-exposition endpoint lives in ``prometheus.py``; it scrapes
+the same in-process counters plus the generic HTTP families, still with no
+persistence and no third-party client library.)
 
 Two artifacts per request:
 

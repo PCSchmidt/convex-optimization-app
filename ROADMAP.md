@@ -62,6 +62,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 - [x] Structured logging of solve requests, iterations, and latency.
 - [x] Metrics endpoint exposing: request count, latency percentiles, error rate, convergence-failure rate.
 - [ ] Optional: Prometheus/Grafana dashboard.
+- [x] Phase 2 shared observability contract: `GET /metrics/prometheus` Prometheus text
+  exposition (stdlib-only writer in `src/convex_optimization/prometheus.py`; generic
+  families requests_total / errors_total / request_latency_seconds / up with the
+  `convex_optimization_` prefix; JSON `GET /metrics` unchanged).
 - [x] Document "what could degrade" (ill-conditioned inputs, numerical instability, solver failures).
 
 **Acceptance:** A reviewer can see how the service is observed and what signals would indicate a problem.
