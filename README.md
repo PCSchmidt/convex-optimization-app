@@ -169,8 +169,12 @@ indicative only.
 - Requires Python 3.12+. The pinned lock (`requirements-lock.txt`, numpy 2.5.3) does not install
   on Python 3.11 because numpy 2.5.3 requires Python >= 3.12; the failure is reproducible with
   `docker build --build-arg PYTHON_TAG=3.11` (documented in the Dockerfile header).
-- Serving (Stage 4) is a local, single-user demo API behind Docker Compose: no TLS, no auth,
-  no rate limiting, not exposed publicly. Observability (Stage 5) is local compose
+- Serving (Stage 4) is a local, single-user demo API behind Docker Compose: no TLS and no
+  auth at the app level. Phase A1 (public readiness) adds per-IP in-process rate limiting,
+  a 64 KiB body cap, bounded parameterized instances, env-configurable CORS, and the
+  verified /parse pipeline -- see the Phase A section. It stays single-instance demo-grade:
+  rate-limit state is in-process (resets on restart), there is no auth, and no
+  production-readiness claim is made. Observability (Stage 5) is local compose
   observability on seeded synthetic problems: structured JSON logs on stdout plus an
   in-process `/metrics` JSON endpoint whose counters RESET ON RESTART. There is no
   persistence, no Prometheus/Grafana scrape stack, no dashboards, and NO alerting — this is
@@ -388,6 +392,108 @@ and key outputs:
 Human screenshot pointers: Grafana dashboard at
 `http://localhost:3002/d/convex-optimization-app` (login `admin`/`admin`),
 Prometheus at `http://localhost:9092`, API on `${PORT:-8000}` (currently 8010).
+
+### Phase A: public readiness (A1 backend hardening)
+
+The service is being deployed publicly (fly.io, behind a purchased domain,
+with a React workbench UI). Phase A1 is the backend half of that work. Scope
+is HONESTLY DEMO-GRADE: single instance, IN-PROCESS rate limiting (resets on
+restart, no shared state), NO auth, NO TLS termination at the app (fly's
+proxy terminates TLS), no persistence. This is abuse-mitigation for a public
+portfolio demo, not production hardening.
+
+#### New/changed endpoints
+
+- **POST /solve** (extended, backwards compatible): the body now optionally
+  carries bounded `params` to solve a USER-SPECIFIED seeded instance of the
+  same three registry problems. Without `params` the frozen Stage 1
+  benchmark instance is solved, byte-identical to before. Solvers are never
+  retuned: same `1/L` steps, `tol=1e-10`, `max_iter=2000`, zero start.
+  - `params` fields (all optional; extra fields rejected): `seed`
+    (0..2^31-1), `n_rows` (4..200), `n_vars` (2..200), `lam` (lasso only,
+    1e-6..100), `ridge` (logistic only, 1e-6..100), `condition`
+    (least_squares only, 1..1e6).
+  - Deterministic auto-fill: `n_rows` defaults to
+    `max(kind_default, n_vars + 10)` when a large `n_vars` is requested
+    without rows (keeps `n_rows > n_vars` for least_squares/lasso).
+  - Hard caps: dimensions <= 200; an out-of-cap or inconsistent request is a
+    422 (`validation_error`). Iteration cap is the fixed `max_iter=2000`.
+  - Same problem+params+seed+method is BIT-REPRODUCIBLE (identical response).
+  - The 200 response gains `parameters` (the resolved instance parameters,
+    or null on the frozen path). Larger ill-conditioned instances may
+    legitimately return 200 with `converged=false` (the documented
+    convergence-failure signal) -- the iteration cap is NOT raised.
+- **POST /parse** (new): body `{"text": "<natural-language problem
+  description>"}` (1..2000 chars). Response: `problem_request` (a complete,
+  directly POSTable /solve body: `problem`, `method` (suggested fastest
+  converging pair), `params`, `tail`), `parse_method` (`"llm"` or
+  `"stub"`), `verified` (boolean), `mismatches` (list of human-readable
+  reasons). A 200 with `verified=false` means "parsed, but the text does
+  not fully support it" -- the UI should surface that, never silently
+  accept. Errors: 422 `parse_invalid` (garbage / unparseable text), 502
+  `provider_unavailable` (configured upstream LLM failed/timed out), 503
+  `provider_not_configured` (no `LLM_API_KEY` set -- the UI hides the
+  feature). The parse is verified MECHANICALLY against the original text
+  (problem-type keywords, dimension numbers, seed integer, weight numbers;
+  conflicting numbers in the text are NOT silently resolved) -- the
+  product's credibility feature. The text is never logged or persisted.
+  The production provider is any OpenAI-compatible /chat/completions
+  endpoint via stdlib urllib (no new dependencies); `StubProvider` (select
+  with `LLM_PROVIDER=stub`) is a documented TEST DOUBLE only, never the
+  production parser.
+- **GET /health**, **GET /metrics**, **GET /metrics/prometheus**: unchanged
+  JSON contract keys; the Prometheus exposition adds ONE family,
+  `convex_optimization_parse_outcomes_total{outcome=...}` with the bounded
+  outcomes `parsed|verified|failed|provider_unavailable|provider_not_configured`,
+  and `errors_total` gains the new bounded error classes below.
+
+#### Error classes (bounded taxonomy, JSON logs + `errors_total`)
+
+`validation_error`, `inapplicable_pair`, `server_error` (existing) plus
+`body_too_large` (413), `rate_limited` (429), `provider_not_configured`
+(503), `provider_unavailable` (502), `parse_invalid` (422).
+
+#### Request hardening
+
+- Per-IP rate limiting: fixed 60 s window, default 30 req/min, env
+  `RATE_LIMIT_PER_MIN` (<= 0 or unparsable disables). Exceeded -> 429 with
+  `Retry-After` (seconds) and the `rate_limited` error class. Client key:
+  the fly proxy's `Fly-Client-IP`, else the direct socket address.
+  Loopback (127.0.0.1, ::1) and the ASGI test client are EXEMPT so local
+  health checks, the compose Prometheus scraper, and the test suite are
+  never throttled. In-process only: windows reset on restart, keys are
+  capped in memory, and there is no cross-instance coordination.
+- Body-size guard: request bodies above 64 KiB (`MAX_BODY_BYTES`) are
+  rejected 413 (`body_too_large`) via the Content-Length header, with a
+  capped streamed read for chunked bodies.
+- Strict pydantic validation: bounded enums and integer/float ranges on
+  every request model; unknown fields are rejected (`extra="forbid"`) on
+  /solve and /parse bodies -- there is still no tol/max_iter tuning surface.
+- CORS: `ALLOWED_ORIGINS` (comma-separated origins, e.g.
+  `https://workbench.example.com`). Default EMPTY = same-origin only: no
+  CORS middleware is installed and no `Access-Control-Allow-*` headers are
+  emitted, so browsers deny every cross-origin request. A wildcard is never
+  accepted from the environment. Allowed methods: GET, POST.
+
+#### New environment variables (all optional)
+
+| var | default | meaning |
+| --- | --- | --- |
+| `ALLOWED_ORIGINS` | empty | comma-separated CORS origins; empty = same-origin only |
+| `RATE_LIMIT_PER_MIN` | `30` | per-IP fixed-window request limit; <= 0 disables |
+| `LLM_API_KEY` | unset | activates the LLM-backed /parse provider (never logged) |
+| `LLM_BASE_URL` | `https://openrouter.ai/api/v1` | OpenAI-compatible base URL |
+| `LLM_MODEL` | `openai/gpt-4o-mini` | model id for the parse provider |
+| `LLM_PROVIDER` | unset | `stub` selects the test-double parser (tests only) |
+
+#### Honest scope of Phase A1
+
+Single-instance, in-process rate limiting (no Redis, no shared state, no
+auth, no per-user quotas); the verifier is heuristic-mechanical (it checks
+what the text literally states, not semantic correctness); /parse runs
+SciPy ground-truth work only via /solve, never in /parse itself; the
+parameterized instances are capped at 200 dimensions to bound CPU per
+request. Nothing here claims production readiness.
 
 ### Deployment runbook (local Docker Compose)
 

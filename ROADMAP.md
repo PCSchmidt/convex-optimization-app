@@ -92,6 +92,36 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 **Acceptance:** The maintain loop is documented and executable, not just described.
 
+## Phase A - Public readiness (deployment project; backend A1 complete)
+
+The app is being deployed publicly on fly.io behind a purchased domain with a React
+workbench UI. Scope is explicitly DEMO-GRADE and documented as such (no production-
+readiness claims): single instance, in-process rate limiting, no auth.
+
+- [x] **A1 backend hardening** (this phase):
+  - Parameterized problem instances: user-specified seeded variants of the SAME three
+    registry problems on POST /solve (seed, n_rows, n_vars <= 200 hard cap, lam/ridge,
+    least_squares condition knob). Frozen Stage 2 benchmark suite and the no-params path
+    stay byte-identical; identical (problem, params, seed, method) is bit-reproducible.
+    Iteration cap stays the fixed max_iter=2000 (larger instances may honestly return
+    converged=false).
+  - Request hardening: per-IP fixed-window rate limiting (429 + Retry-After,
+    RATE_LIMIT_PER_MIN, default 30/min, in-process only), 64 KiB body cap (413), strict
+    pydantic validation with extra="forbid", env-configurable CORS (ALLOWED_ORIGINS;
+    empty default = same-origin only; wildcard never accepted).
+  - POST /parse: natural language -> structured /solve request via an OpenAI-compatible
+    provider (stdlib urllib, LLM_API_KEY/LLM_BASE_URL/LLM_MODEL; clean 503
+    provider_not_configured without a key) plus a deterministic mechanical verifier
+    (verified flag + mismatches; parses are never trusted blindly). StubProvider is a
+    documented test double. New bounded error classes + the
+    convex_optimization_parse_outcomes_total family on the existing writer.
+  - 94 tests pass (60 pre-existing, unchanged except the brittle Prometheus family-count
+    assertion 10 -> 11), ruff check + format clean.
+- [ ] A2 deployment: fly.io app, purchased domain, TLS at the proxy, React workbench
+  wiring (feature-flagged /parse behind a configured LLM key), deploy runbook evidence.
+- [ ] Honest scope note to carry forward: single instance, in-process rate limiting
+  (resets on restart), no auth, no per-user quotas, no distributed state. Demo-grade.
+
 ## Portfolio presentation
 
 - [ ] README tells the full lifecycle story with real benchmark numbers, emphasizing rigor.
