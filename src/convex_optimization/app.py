@@ -42,22 +42,57 @@ solve_latency_seconds, iterations, and final_objective_gap -- all labelled by
 registry problem/solver_method NAMES only, recorded ONLY for HTTP 200 solves
 (failed requests touch errors_total exclusively). The convergence-failure
 rate is derived in dashboards as failures_total / solves_total.
+
+Phase A1 (public readiness, single-instance demo grade -- see README):
+
+- POST /solve additionally accepts bounded ``params`` (seed, n_rows, n_vars,
+  plus lam/ridge/condition) to solve USER-SPECIFIED seeded instances of the
+  same three registry problems; without ``params`` the frozen Stage 1
+  benchmark instance is used, unchanged.
+- POST /parse turns a natural-language problem description into the
+  structured /solve request, with a deterministic mechanical verifier
+  (``verified`` + ``mismatches``) and never trusted blindly. LLM-backed via
+  ``LLM_API_KEY``; without a key it returns the documented 503
+  ``provider_not_configured`` error.
+- Hardening: per-IP fixed-window rate limiting (429 + Retry-After,
+  ``RATE_LIMIT_PER_MIN``), a 64 KiB request-body cap (413), and
+  env-configurable CORS (``ALLOWED_ORIGINS``; empty default = same-origin
+  only). New bounded error classes: body_too_large, rate_limited,
+  provider_not_configured, provider_unavailable, parse_invalid; plus the
+  ``convex_optimization_parse_outcomes_total`` family. See
+  ``hardening.py`` / ``parsing.py``.
 """
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.routing import Match
 
+from . import parsing
 from .cli import APPLICABLE, METHODS, PROBLEMS, solve
-from .observability import ERROR_INAPPLICABLE, ERROR_SERVER, ERROR_VALIDATION, metrics
+from .hardening import (
+    HardeningMiddleware,
+    parse_allowed_origins,
+)
+from .observability import (
+    ERROR_INAPPLICABLE,
+    ERROR_PARSE_INVALID,
+    ERROR_PROVIDER_NOT_CONFIGURED,
+    ERROR_PROVIDER_UNAVAILABLE,
+    ERROR_SERVER,
+    ERROR_VALIDATION,
+    metrics,
+)
+from .problems import make_parameterized, resolve_parameter_spec
 from .prometheus import (
     CONTENT_TYPE,
     UNKNOWN_LABEL,
@@ -71,7 +106,7 @@ app = FastAPI(
         "Stage 4 serving layer over the from-scratch Stage 1 first-order "
         "methods. Local/offline demo only; not a production service."
     ),
-    version="0.6.0",
+    version="0.7.0",
 )
 
 
@@ -141,20 +176,71 @@ async def prometheus_middleware(request: Request, call_next) -> Response:
     return response
 
 
+# --- Phase A1 hardening -----------------------------------------------------
+# Middleware order (Starlette: the LAST added runs FIRST): the Prometheus
+# middleware below is the innermost custom layer; hardening sits outside it
+# and records its own short-circuited 429/413 responses; CORS (when any
+# ALLOWED_ORIGINS are configured) is outermost and answers preflights.
+app.add_middleware(HardeningMiddleware, fastapi_app=app)
+
+_allowed_origins = parse_allowed_origins(os.environ.get("ALLOWED_ORIGINS"))
+if _allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_allowed_origins,  # explicit list only; never "*"
+        allow_methods=["GET", "POST"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
+# Default (no ALLOWED_ORIGINS): no CORS middleware at all -> NO
+# Access-Control-Allow-Origin headers -> browsers deny every cross-origin
+# request (same-origin only). The safe default requires no configuration.
+
 # Upper bound on the returned history tail so responses stay small and
 # bounded. The full history stays available through the CLI / Python API.
 MAX_TAIL = 20
 DEFAULT_TAIL = 5
 
 
+class ProblemParams(BaseModel):
+    """Bounded parameters of a user-specified problem instance (Phase A1).
+
+    All fields are optional: omitted fields fall back to the kind's frozen
+    Stage 1 defaults (see ``problems.PARAMETERIZED_DEFAULTS``), so the frozen
+    benchmark instances are reproducible through this model as well. Hard
+    caps: dimensions <= 200, weights in [1e-6, 100], condition in [1, 1e6],
+    seed in [0, 2^31-1]. Extra fields are rejected.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    n_rows: int | None = Field(default=None, ge=4, le=200)
+    n_vars: int | None = Field(default=None, ge=2, le=200)
+    lam: float | None = Field(default=None, gt=0, le=100.0)
+    ridge: float | None = Field(default=None, gt=0, le=100.0)
+    condition: float | None = Field(default=None, ge=1.0, le=1e6)
+
+
 class SolveRequest(BaseModel):
-    """One (problem, method) solve with the Stage 1-2 default settings."""
+    """One (problem, method) solve with the Stage 1-2 default settings.
+
+    Without ``params`` the FROZEN Stage 1 benchmark instance is solved,
+    exactly as before Phase A1 (byte-identical behavior). With ``params`` a
+    user-specified seeded instance of the SAME registry problem is built
+    (bounded dimensions/weights; bit-reproducible for identical inputs).
+    The solvers themselves are never retuned: same 1/L steps, tol=1e-10,
+    max_iter=2000, zero start.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     problem: Literal["least_squares", "lasso", "logistic"]
     method: Literal["gd", "nesterov", "fista", "ista"]
     # Number of trailing history rows to return (bounded; full history is NOT
     # returned by the API).
     tail: int = Field(default=DEFAULT_TAIL, ge=1, le=MAX_TAIL)
+    params: ProblemParams | None = None
 
 
 class HistoryRow(BaseModel):
@@ -175,6 +261,9 @@ class SolveResponse(BaseModel):
     final_objective_gap: float
     final_residual: float
     history_tail: list[HistoryRow]
+    # Resolved instance parameters when the request carried ``params``
+    # (user-specified instance); null for the frozen benchmark instance.
+    parameters: dict[str, float | int] | None = None
 
 
 @app.get("/health")
@@ -272,8 +361,44 @@ def solve_endpoint(request: SolveRequest) -> SolveResponse:
             },
         )
 
+    # Phase A1: user-specified instance (bounded, validated, cached by
+    # problems.make_parameterized). Cross-field checks (e.g. n_rows > n_vars,
+    # kind-specific fields) run here even though pydantic already bounded the
+    # individual ranges -- defense in depth with the same error class.
+    parameters: dict[str, float | int] | None = None
+    instance = None
+    if request.params is not None:
+        try:
+            spec = resolve_parameter_spec(
+                request.problem,
+                seed=request.params.seed,
+                n_rows=request.params.n_rows,
+                n_vars=request.params.n_vars,
+                lam=request.params.lam,
+                ridge=request.params.ridge,
+                condition=request.params.condition,
+            )
+        except ValueError as exc:
+            metrics.record("/solve", 422, elapsed_ms(), error_class=ERROR_VALIDATION)
+            prometheus_metrics.record_error("/solve", "POST", ERROR_VALIDATION)
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "invalid problem parameters", "reason": str(exc)},
+            ) from exc
+        problem, spec = make_parameterized(
+            spec.kind,
+            seed=spec.seed,
+            n_rows=spec.n_rows,
+            n_vars=spec.n_vars,
+            lam=spec.lam,
+            ridge=spec.ridge,
+            condition=spec.condition,
+        )
+        parameters = spec.to_dict()
+        instance = problem
+
     try:
-        problem, result = solve(request.problem, request.method)
+        problem, result = solve(request.problem, request.method, problem=instance)
     except Exception:
         # Solver crash: counted and logged as a 5xx server error (not a
         # convergence failure), then re-raised for the default 500 handling.
@@ -302,6 +427,7 @@ def solve_endpoint(request: SolveRequest) -> SolveResponse:
         history_tail=[
             HistoryRow(iteration=i, objective=obj, residual=res) for i, obj, res in tail_rows
         ],
+        parameters=parameters,
     )
     metrics.record(
         "/solve",
@@ -323,4 +449,149 @@ def solve_endpoint(request: SolveRequest) -> SolveResponse:
         final_objective_gap=response.final_objective_gap,
         converged=response.converged,
     )
+    return response
+
+
+# ---------------------------------------------------------------------------
+# Phase A1: POST /parse -- natural-language -> structured /solve request.
+# Provider in parsing.py (LLM via env, or the test-only stub); every parse is
+# mechanically verified against the text and NEVER trusted blindly.
+# ---------------------------------------------------------------------------
+
+
+class ParseRequest(BaseModel):
+    """One natural-language problem description to parse."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=parsing.MAX_PARSE_TEXT_CHARS)
+
+
+class ParsedParams(BaseModel):
+    """The parsed instance parameters (same shape/bounds as ProblemParams)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int | None = None
+    n_rows: int | None = None
+    n_vars: int | None = None
+    lam: float | None = None
+    ridge: float | None = None
+    condition: float | None = None
+
+
+class ParsedProblemRequest(BaseModel):
+    """A complete, directly POSTable /solve request body."""
+
+    problem: Literal["least_squares", "lasso", "logistic"]
+    method: Literal["gd", "nesterov", "fista", "ista"]
+    params: ParsedParams
+    tail: int = Field(default=DEFAULT_TAIL, ge=1, le=MAX_TAIL)
+
+
+class ParseResponse(BaseModel):
+    """One parse outcome: the /solve request plus its verification verdict.
+
+    ``verified=false`` (HTTP 200) means the spec was produced but the text
+    does not fully support it -- ``mismatches`` says exactly what failed.
+    The UI should surface that verdict, not silently accept the parse.
+    """
+
+    problem_request: ParsedProblemRequest
+    parse_method: str  # "llm" (production) or "stub" (test double)
+    verified: bool
+    mismatches: list[str]
+
+
+def _fail_parse(
+    status: int,
+    error_class: str,
+    outcome: str,
+    detail: dict,
+    elapsed_ms: float,
+) -> None:
+    """Record one /parse failure in all three metrics layers, then raise."""
+    metrics.record("/parse", status, elapsed_ms, error_class=error_class)
+    prometheus_metrics.record_error("/parse", "POST", error_class)
+    prometheus_metrics.record_parse(outcome)
+    raise HTTPException(status_code=status, detail=detail)
+
+
+# Suggested method per problem kind (the benchmark's fastest converging pair):
+# smooth kinds -> nesterov; the nonsmooth lasso -> fista.
+SUGGESTED_METHOD = {"least_squares": "nesterov", "lasso": "fista", "logistic": "nesterov"}
+
+
+@app.post(
+    "/parse",
+    response_model=ParseResponse,
+    responses={
+        422: {"description": "Text could not be parsed into a valid problem spec"},
+        502: {"description": "Configured upstream LLM failed or timed out"},
+        503: {"description": "No LLM provider configured (set LLM_API_KEY)"},
+    },
+)
+def parse_endpoint(request: ParseRequest) -> ParseResponse:
+    """Parse one natural-language problem description into a /solve request.
+
+    The parse is mechanical-verified against the original text (problem-type
+    keywords, dimension numbers, seed integer, weight numbers); the response
+    carries ``verified`` and ``mismatches``. Outcomes are counted in the
+    bounded ``convex_optimization_parse_outcomes_total`` family. The text is
+    never logged and never persisted.
+    """
+    t0 = time.perf_counter()
+
+    def elapsed_ms() -> float:
+        return (time.perf_counter() - t0) * 1000.0
+
+    try:
+        problem, params, parse_method, verified, mismatches = parsing.parse_text(request.text)
+        spec = resolve_parameter_spec(problem, **params)
+    except parsing.ProviderNotConfigured as exc:
+        _fail_parse(
+            503,
+            ERROR_PROVIDER_NOT_CONFIGURED,
+            "provider_not_configured",
+            {
+                "error": "no LLM provider configured",
+                "hint": "set LLM_API_KEY (and optionally LLM_BASE_URL / LLM_MODEL) to enable parsing",
+                "reason": str(exc)[:200],
+            },
+            elapsed_ms(),
+        )
+    except parsing.ProviderUnavailable as exc:
+        _fail_parse(
+            502,
+            ERROR_PROVIDER_UNAVAILABLE,
+            "provider_unavailable",
+            {"error": "upstream LLM call failed", "reason": str(exc)[:200]},
+            elapsed_ms(),
+        )
+    except (parsing.ParseFailure, ValueError) as exc:
+        _fail_parse(
+            422,
+            ERROR_PARSE_INVALID,
+            "failed",
+            {
+                "error": "could not parse the text into a valid problem spec",
+                "reason": str(exc)[:200],
+            },
+            elapsed_ms(),
+        )
+
+    method = SUGGESTED_METHOD[problem]
+    response = ParseResponse(
+        problem_request=ParsedProblemRequest(
+            problem=problem,
+            method=method,
+            params=ParsedParams(**spec.to_dict()),
+            tail=DEFAULT_TAIL,
+        ),
+        parse_method=parse_method,
+        verified=verified,
+        mismatches=mismatches,
+    )
+    prometheus_metrics.record_parse("verified" if verified else "parsed")
+    metrics.record("/parse", 200, elapsed_ms())
     return response

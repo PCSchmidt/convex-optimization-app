@@ -53,6 +53,20 @@ Cardinality is bounded by construction:
 
 Request ids, user problem/method choices beyond the registry names, exception
 messages, and full URLs are NEVER label values.
+
+Phase A1 (public readiness) additions on the same endpoint and writer:
+
+- new bounded ``error_class`` values in ``errors_total``
+  (``body_too_large`` / ``rate_limited`` / ``provider_not_configured`` /
+  ``provider_unavailable`` / ``parse_invalid`` -- see
+  ``observability.ERROR_CLASSES``),
+- a new counter family ``convex_optimization_parse_outcomes_total`` with the
+  single bounded label ``outcome`` (``parsed`` / ``verified`` / ``failed`` /
+  ``provider_unavailable`` / ``provider_not_configured``), recorded ONLY by
+  the POST /parse endpoint.
+
+No other families or labels changed; the JSON ``GET /metrics`` contract is
+untouched.
 """
 
 from __future__ import annotations
@@ -72,6 +86,7 @@ LATENCY_SECONDS = f"{METRIC_PREFIX}_request_latency_seconds"
 UP = f"{METRIC_PREFIX}_up"
 
 # Phase 3 convex-app-specific family names.
+PARSE_OUTCOMES_TOTAL = f"{METRIC_PREFIX}_parse_outcomes_total"
 SOLVES_TOTAL = f"{METRIC_PREFIX}_solves_total"
 CONVERGENCE_SUCCESSES_TOTAL = f"{METRIC_PREFIX}_convergence_successes_total"
 CONVERGENCE_FAILURES_TOTAL = f"{METRIC_PREFIX}_convergence_failures_total"
@@ -122,6 +137,15 @@ GAP_BUCKETS: tuple[float, ...] = (
     1.0,
 )
 
+# Phase A1 parse-pipeline outcome labels: bounded, fixed vocabulary only.
+PARSE_OUTCOMES: tuple[str, ...] = (
+    "parsed",  # 200: spec produced but verification found mismatches
+    "verified",  # 200: spec produced AND deterministically verified
+    "failed",  # 422: text could not be turned into a valid spec
+    "provider_unavailable",  # 502: configured upstream LLM failed/timed out
+    "provider_not_configured",  # 503: no LLM key configured
+)
+
 # Literal endpoint label for requests that matched no declared route (e.g.
 # unknown paths -> 404). Bounded: it is a fixed token, never the raw path.
 UNMATCHED_ENDPOINT = "unmatched"
@@ -135,7 +159,7 @@ _HELP = {
     REQUESTS_TOTAL: "Total HTTP requests handled, by endpoint, method, and status code.",
     ERRORS_TOTAL: (
         "Total HTTP requests counted as errors, with the app's bounded "
-        "error_class vocabulary (validation_error, inapplicable_pair, server_error)."
+        "error_class vocabulary (see observability.ERROR_CLASSES)."
     ),
     LATENCY_SECONDS: "End-to-end HTTP request latency in seconds.",
     SOLVES_TOTAL: "Total HTTP 200 /solve responses, by problem and solver method.",
@@ -149,6 +173,7 @@ _HELP = {
     SOLVE_LATENCY_SECONDS: "Latency of successful (HTTP 200) solves, in seconds.",
     ITERATIONS: "Stage 1 iteration count per successful (HTTP 200) solve.",
     FINAL_OBJECTIVE_GAP: ("Final objective gap vs ground truth per successful (HTTP 200) solve."),
+    PARSE_OUTCOMES_TOTAL: ("POST /parse outcomes, by bounded outcome label (see PARSE_OUTCOMES)."),
 }
 
 _TYPE = {
@@ -162,6 +187,7 @@ _TYPE = {
     SOLVE_LATENCY_SECONDS: "histogram",
     ITERATIONS: "histogram",
     FINAL_OBJECTIVE_GAP: "histogram",
+    PARSE_OUTCOMES_TOTAL: "counter",
 }
 
 
@@ -253,6 +279,7 @@ class PrometheusCollector:
         self._solve_latencies = _Histogram(self._buckets)
         self._iterations = _Histogram(tuple(sorted(iteration_buckets)))
         self._gaps = _Histogram(tuple(sorted(gap_buckets)))
+        self._parse_outcomes: dict[str, int] = {}
 
     def record_request(
         self, endpoint: str, method: str, status: int, latency_seconds: float
@@ -298,6 +325,23 @@ class PrometheusCollector:
             else:
                 self._convergence_failure[key] = self._convergence_failure.get(key, 0) + 1
 
+    def record_parse(self, outcome: str) -> None:
+        """Count one POST /parse outcome (bounded vocabulary only).
+
+        ``outcome`` must be one of ``PARSE_OUTCOMES``; anything else raises
+        (a programming error, never a user input path -- user inputs are
+        mapped onto the bounded vocabulary by the endpoint).
+        """
+        if outcome not in PARSE_OUTCOMES:
+            raise ValueError(f"outcome {outcome!r} not in PARSE_OUTCOMES")
+        with self._lock:
+            self._parse_outcomes[outcome] = self._parse_outcomes.get(outcome, 0) + 1
+
+    def parse_outcome_counts(self) -> dict[str, int]:
+        """Copy of the parse_outcomes_total series (for tests/introspection)."""
+        with self._lock:
+            return dict(self._parse_outcomes)
+
     def counts(self) -> dict[tuple[str, str, str], int]:
         """Copy of the requests_total series (for tests/introspection)."""
         with self._lock:
@@ -330,6 +374,7 @@ class PrometheusCollector:
             solve_latencies = self._solve_latencies.snapshot()
             iterations = self._iterations.snapshot()
             gaps = self._gaps.snapshot()
+            parse_outcomes = sorted(self._parse_outcomes.items())
 
         lines: list[str] = []
 
@@ -389,6 +434,11 @@ class PrometheusCollector:
             lines, FINAL_OBJECTIVE_GAP, gaps, self._gaps.buckets, ("problem", "solver_method")
         )
 
+        family(PARSE_OUTCOMES_TOTAL)
+        for outcome, count in parse_outcomes:
+            labels = format_labels((("outcome", outcome),))
+            lines.append(f"{PARSE_OUTCOMES_TOTAL}{labels} {count}")
+
         return "\n".join(lines) + "\n"
 
     def reset(self) -> None:
@@ -403,6 +453,7 @@ class PrometheusCollector:
             self._solve_latencies.clear()
             self._iterations.clear()
             self._gaps.clear()
+            self._parse_outcomes.clear()
 
 
 def _render_histogram(

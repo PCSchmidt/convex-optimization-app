@@ -104,8 +104,9 @@ def test_all_required_families_and_types_present() -> None:
     assert f"# TYPE {ERRORS_TOTAL} counter" in text
     assert f"# TYPE {LATENCY_SECONDS} histogram" in text
     assert f"# TYPE {UP} gauge" in text
-    # 4 generic Phase 2 families + 6 Phase 3 convex-specific families.
-    assert text.count("# TYPE ") == 10
+    # 4 generic Phase 2 families + 6 Phase 3 convex-specific families
+    # + 1 Phase A1 parse-outcomes family (added with /parse in Phase A1).
+    assert text.count("# TYPE ") == 11
     # Families are declared even when they have no samples yet.
     for name in (REQUESTS_TOTAL, ERRORS_TOTAL, LATENCY_SECONDS, UP):
         assert f"# HELP {name} " in text, name

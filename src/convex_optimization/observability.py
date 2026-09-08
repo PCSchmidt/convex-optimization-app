@@ -41,9 +41,29 @@ from collections import deque
 _LOGGER_NAME = "convex_optimization.observability"
 
 # Error-class taxonomy (error_class field in logs; 4xx/5xx only).
+# Phase A1 (public readiness) additions follow the same rules: a fixed,
+# bounded vocabulary, wired into errors_total and the JSON logs exactly like
+# the original three classes.
 ERROR_INAPPLICABLE = "inapplicable_pair"
 ERROR_VALIDATION = "validation_error"
 ERROR_SERVER = "server_error"
+ERROR_BODY_TOO_LARGE = "body_too_large"  # 413: request body above the 64 KiB cap
+ERROR_RATE_LIMITED = "rate_limited"  # 429: per-IP fixed-window limit exceeded
+ERROR_PROVIDER_NOT_CONFIGURED = "provider_not_configured"  # 503: no LLM key set
+ERROR_PROVIDER_UNAVAILABLE = "provider_unavailable"  # 502: upstream LLM failure
+ERROR_PARSE_INVALID = "parse_invalid"  # 422: text cannot be parsed to a spec
+
+# The complete bounded vocabulary (single source of truth for docs/tests).
+ERROR_CLASSES = (
+    ERROR_INAPPLICABLE,
+    ERROR_VALIDATION,
+    ERROR_SERVER,
+    ERROR_BODY_TOO_LARGE,
+    ERROR_RATE_LIMITED,
+    ERROR_PROVIDER_NOT_CONFIGURED,
+    ERROR_PROVIDER_UNAVAILABLE,
+    ERROR_PARSE_INVALID,
+)
 
 # Bounded latency window for percentiles: the most recent requests only, so
 # the metrics endpoint cannot grow without bound in a long-lived process.
