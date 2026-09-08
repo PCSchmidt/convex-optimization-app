@@ -66,6 +66,10 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
   exposition (stdlib-only writer in `src/convex_optimization/prometheus.py`; generic
   families requests_total / errors_total / request_latency_seconds / up with the
   `convex_optimization_` prefix; JSON `GET /metrics` unchanged).
+- [x] App-specific Prometheus families (same endpoint): solves_total, solve_latency_seconds,
+  convergence_successes_total / convergence_failures_total, iterations, final_objective_gap —
+  labeled ONLY by registry problem/solver_method names; inapplicable-pair 422s create no
+  problem/method series; JSON `GET /metrics` unchanged.
 - [x] Document "what could degrade" (ill-conditioned inputs, numerical instability, solver failures).
 
 **Acceptance:** A reviewer can see how the service is observed and what signals would indicate a problem.

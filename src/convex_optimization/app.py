@@ -32,6 +32,13 @@ Phase 2 shared contract: ``GET /metrics/prometheus`` additionally exposes the
 generic Prometheus text-exposition families (requests_total, errors_total,
 request_latency_seconds, up) written by ``prometheus.py`` -- stdlib only, no
 prometheus_client. The JSON ``GET /metrics`` snapshot is unchanged.
+
+Phase 3 convex-specific families on the same endpoint: solves_total,
+convergence_successes_total / convergence_failures_total,
+solve_latency_seconds, iterations, and final_objective_gap -- all labelled by
+registry problem/solver_method NAMES only, recorded ONLY for HTTP 200 solves
+(failed requests touch errors_total exclusively). The convergence-failure
+rate is derived in dashboards as failures_total / solves_total.
 """
 
 from __future__ import annotations
@@ -48,7 +55,12 @@ from starlette.routing import Match
 
 from .cli import APPLICABLE, METHODS, PROBLEMS, solve
 from .observability import ERROR_INAPPLICABLE, ERROR_SERVER, ERROR_VALIDATION, metrics
-from .prometheus import CONTENT_TYPE, UNMATCHED_ENDPOINT, prometheus_metrics
+from .prometheus import (
+    CONTENT_TYPE,
+    UNKNOWN_LABEL,
+    UNMATCHED_ENDPOINT,
+    prometheus_metrics,
+)
 
 app = FastAPI(
     title="convex-optimization-app",
@@ -71,6 +83,18 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     metrics.record(endpoint, 422, 0.0, error_class=ERROR_VALIDATION)
     prometheus_metrics.record_error(endpoint, request.method, ERROR_VALIDATION)
     return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
+
+
+def _bounded_registry_label(name: str, allowed: tuple[str, ...] | frozenset[str]) -> str:
+    """Registry-name label bound (defense in depth).
+
+    ``problem``/``solver_method`` labels use ONLY ``cli.PROBLEMS`` /
+    ``cli.METHODS`` names. By construction they are already validated
+    (pydantic Literal + the APPLICABLE matrix reject everything else before a
+    solve runs); a hypothetically unregistered name would fall back to the
+    fixed token ``unknown`` rather than create an unbounded series.
+    """
+    return name if name in allowed else UNKNOWN_LABEL
 
 
 def _route_template(request: Request) -> str:
@@ -283,5 +307,16 @@ def solve_endpoint(request: SolveRequest) -> SolveResponse:
         method=request.method,
         iterations=result.n_iter,
         converged=result.converged,
+    )
+    # Phase 3 Prometheus domain families: HTTP 200 solves only (the JSON
+    # snapshot's success_count semantics); registry-name labels; a 4xx/5xx
+    # request never creates a problem/solver_method series.
+    prometheus_metrics.record_solve(
+        _bounded_registry_label(problem.name, PROBLEMS),
+        _bounded_registry_label(request.method, METHODS),
+        latency_seconds=elapsed_ms() / 1000.0,
+        iterations=response.iterations,
+        final_objective_gap=response.final_objective_gap,
+        converged=response.converged,
     )
     return response
