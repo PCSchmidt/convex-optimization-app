@@ -8,7 +8,7 @@ reproducible benchmarking against SciPy solvers. The emphasis is on honest,
 reviewable engineering: fixed seeds, pinned dependencies, recorded run logs,
 and convergence behavior shown rather than claimed.
 
-The legacy app (`legacy/`, read-only) delegated all solving to PuLP/CVXPY
+The pre-refactor app (archived in this repository's git history before removal) delegated all solving to PuLP/CVXPY
 wrappers with no self-implemented algorithm and no convergence record. Stage 1
 replaces that approach with first-order methods written from scratch in NumPy.
 
@@ -196,8 +196,6 @@ indicative only.
     `"error_class": "inapplicable_pair"`. Malformed bodies (bad `tail`, unknown names)
     are 4xx with `"error_class": "validation_error"`. These are request errors, NEVER
     convergence failures.
-- Legacy reference code in `legacy/` is read-only and is not part of the
-  installed package.
 
 ## Operational notes
 

@@ -1,3 +1,5 @@
+> **Historical document (2026-09-08):** the `legacy/` snapshot this inventory describes was removed from the working tree after the redesign was published. Its contents remain recoverable from this repository's git history. The audit below is preserved as the Stage 0 record.
+
 # INVENTORY.md - legacy/ reference review
 
 Read-only snapshot of the previous GitHub app, imported into `legacy/` for
