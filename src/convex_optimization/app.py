@@ -25,8 +25,11 @@ Interactive docs: http://localhost:8000/docs
 Stage 5 observability (LOCAL ONLY): every request emits one structured JSON
 log line to stdout, and ``GET /metrics`` exposes in-process counters (request
 count, latency percentiles, 4xx/5xx error rates, and the convex-specific
-convergence-failure rate). Counters reset on restart; there is no Grafana,
-alerting, or persistence. See ``observability.py``.
+convergence-failure rate). Counters reset on restart. Phase 6 adds the local
+compose Grafana + Prometheus stack (prometheus.yml + provisioning/ + the
+grafana service in docker-compose.yml, host ports 9092/3002) which scrapes
+``/metrics/prometheus`` into a committed 14-panel dashboard; there is still
+no alerting and no external monitoring. See ``observability.py``.
 
 Phase 2 shared contract: ``GET /metrics/prometheus`` additionally exposes the
 generic Prometheus text-exposition families (requests_total, errors_total,
@@ -68,7 +71,7 @@ app = FastAPI(
         "Stage 4 serving layer over the from-scratch Stage 1 first-order "
         "methods. Local/offline demo only; not a production service."
     ),
-    version="0.5.0",
+    version="0.6.0",
 )
 
 
@@ -188,11 +191,12 @@ def metrics_endpoint() -> dict:
     """Stage 5 metrics (LOCAL ONLY): in-process counters, reset on restart.
 
     JSON snapshot: request counts, latency summary and percentiles, 4xx/5xx
-    error rates, and the convergence-failure rate (200 solves that returned
-    ``converged=false``, i.e. hit ``max_iter=2000`` without meeting
-    ``tol=1e-10``). 4xx validation / inapplicable-pair responses count as
-    errors, NOT convergence failures. There is no persistence, no scrape
-    target, and no alerting; counters reset when the process restarts.
+        error rates, and the convergence-failure rate (200 solves that returned
+        ``converged=false``, i.e. hit ``max_iter=2000`` without meeting
+        ``tol=1e-10``). 4xx validation / inapplicable-pair responses count as
+        errors, NOT convergence failures. This JSON contract is unchanged by the
+        Phase 6 stack; there is no alerting, and counters reset when the process
+        restarts.
     """
     snapshot = metrics.snapshot()  # snapshot first: do not count this call
     metrics.record("/metrics", 200, 0.0)

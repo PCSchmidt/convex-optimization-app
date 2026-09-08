@@ -1,0 +1,16 @@
+# Grafana declarative datasource provisioning (Phase 6). Auto-configures the
+# Prometheus datasource pointing at the compose `prometheus` service. The
+# fixed uid `convex-prom` is referenced by every panel of the committed
+# dashboard JSON, so the dashboard works on a fresh volume.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: convex-prom
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 5s

@@ -305,16 +305,63 @@ endpoints, same 422 behavior, still no tol/max_iter/seed knobs):
   UNCHANGED. Domain counters (convergence failures, iterations) are
   deliberately NOT exported here yet.
 - **Scope honesty.** Counters are in-process and RESET ON RESTART; there is
-  no persistence, no Grafana stack, no dashboard, and no alerting (the
-  Prometheus text endpoint above is a scrape target only, written by hand).
-  This is local compose observability on seeded synthetic problems so a
-  reviewer can SEE the signals — not production monitoring.
+  no alerting, no retention beyond the 1-day local Prometheus TSDB, and no
+  external monitoring. This is local compose observability on seeded
+  synthetic problems so a reviewer can SEE the signals — not production
+  monitoring. Phase 6 adds the LOCAL Grafana + Prometheus stack (next
+  section); the JSON contract is unchanged.
+- **Phase 6 note.** The domain counters listed as "NOT exported here yet"
+  above were added in Phase 3 (`convex_optimization_solves_total`,
+  `convex_optimization_convergence_successes_total` /
+  `_convergence_failures_total`, `convex_optimization_solve_latency_seconds`,
+  `convex_optimization_iterations`, `convex_optimization_final_objective_gap`)
+  and are scraped by the Phase 6 Prometheus job into the Phase 6 Grafana
+  dashboard.
 
-Environment variables: the app has no secrets and needs no keys. The only
-configuration knob is `PORT` — the host port published by compose for the
-`api` service (default 8000; the container always listens on 8000
-internally). Default compose path is fully offline: the solve endpoints make
-no network calls.
+### Phase 6 observability stack (LOCAL Grafana + Prometheus, compose only)
+
+Declarative, reproducible, and offline after image pulls: scrape config,
+datasource, and dashboard are committed files, not hand-clicked UI state.
+
+- **`prometheus.yml`** — one scrape job, `convex-optimization-api`, scraping
+  `api:8000/metrics/prometheus` every 5 s inside the compose network
+  (`--storage.tsdb.retention.time=1d`). No federation, no cloud, no external
+  monitoring.
+- **`provisioning/datasources/prometheus.yml`** — auto-configures the default
+  Prometheus datasource (fixed uid `convex-prom`) pointing at the compose
+  `prometheus` service.
+- **`provisioning/dashboards/`** — `dashboards.yml` (file provider) +
+  `convex_optimization.json` (uid `convex-optimization-app`), auto-loaded
+  into the "Convex Optimization" folder. 14 panels: app health (up stat),
+  HTTP request rate, HTTP error rate, p50/p95/p99 latency, request rate by
+  endpoint, recent-errors table, solver error classes, solve request rate by
+  problem/method, solve latency p50/p95, convergence success rate, convergence
+  failures, iteration count by method/problem, final objective gap. Units are
+  set per panel (seconds, req/s, %, short); empty windows show the panel's
+  "No data yet" note rather than a blank chart.
+- **`docker-compose.yml`** — `prometheus` (pinned `prom/prometheus:v3.14.0`)
+  on host `${PROMETHEUS_PORT:-9092}`, `grafana` (pinned
+  `grafana/grafana-oss:13.0.2`) on host `${GRAFANA_PORT:-3002}`, plus the
+  unchanged `api` (host `${PORT:-8000}`) and offline `smoke` services. The
+  `prometheus` service waits for the api healthcheck.
+- **Volumes (intentional persistence only).** `grafana-data` (named volume)
+  keeps Grafana users/orgs/settings across `compose down`; dashboards are NOT
+  kept there — they are provisioned from the committed JSON. Prometheus TSDB
+  data is deliberately EPHEMERAL (no volume): the api counters it scrapes are
+  in-process and reset on api restart anyway. `docker compose down` preserves
+  `grafana-data`; `docker compose down -v` removes it.
+- **Login:** Grafana OSS defaults `admin` / `admin` (set explicitly in
+  compose; no secrets exist in this app). Anonymous access is disabled.
+- **Honest scope:** counters are in-process in the api container and reset
+  when it restarts; Prometheus history is capped at 1 day; nothing is exposed
+  beyond localhost published ports. This is a demo stack, not production
+  monitoring.
+
+Environment variables: the app has no secrets and needs no keys. Three host
+ports are configurable: `PORT` (api, default 8000), `PROMETHEUS_PORT`
+(default 9092), `GRAFANA_PORT` (default 3002). The api container always
+listens on 8000 internally. Default compose path is fully offline: the solve
+endpoints make no network calls.
 
 ### Deployment runbook (local Docker Compose)
 
@@ -326,11 +373,31 @@ git clone <repo-url>
 cd convex_optimization_app
 # optional pre-check (uses the venv, offline): make setup && make test
 docker compose build                # or: make docker-build
-docker compose up -d api            # serves on http://localhost:${PORT:-8000}
-curl --noproxy '*' http://localhost:8000/health
-curl --noproxy '*' -X POST http://localhost:8000/solve   -H 'Content-Type: application/json'   -d '{"problem":"logistic","method":"nesterov"}'
-curl --noproxy '*' http://localhost:8000/metrics
-docker compose down
+docker compose up -d                # api + prometheus + grafana (Phase 6 stack)
+curl --noproxy '*' http://localhost:${PORT:-8010}/health   # PORT unset -> use 8000
+curl --noproxy '*' -X POST http://localhost:8010/solve   -H 'Content-Type: application/json'   -d '{"problem":"logistic","method":"nesterov"}'
+curl --noproxy '*' http://localhost:8010/metrics
+# observability endpoints (Phase 6):
+curl --noproxy '*' http://localhost:9092/api/v1/targets         # scrape target health
+curl --noproxy '*' 'http://localhost:9092/api/v1/query?query=sum(convex_optimization_solves_total)'
+curl --noproxy '*' -u admin:admin http://localhost:3002/api/health
+# dashboard: http://localhost:3002/d/convex-optimization-app  (login admin/admin)
+docker compose down                # stops containers; keeps the grafana-data volume
+```
+
+Phase 6 verification loop (already executed once during this phase; the
+traffic pattern below is exactly what was replayed against the running
+stack — health checks, all six applicable (problem, method) pairs, and
+inapplicable/invalid 422s for the error panels):
+
+```bash
+# generate representative traffic (repeat for a few minutes):
+curl --noproxy '*' http://localhost:8010/health
+curl --noproxy '*' -X POST http://localhost:8010/solve -H 'Content-Type: application/json' -d '{"problem":"least_squares","method":"nesterov"}'
+curl --noproxy '*' -X POST http://localhost:8010/solve -H 'Content-Type: application/json' -d '{"problem":"lasso","method":"fista"}'
+curl --noproxy '*' -X POST http://localhost:8010/solve -H 'Content-Type: application/json' -d '{"problem":"lasso","method":"nesterov"}'   # 422 inapplicable_pair
+# then check population:
+curl --noproxy '*' 'http://localhost:9092/api/v1/query?query=sum(convex_optimization_solves_total)'
 ```
 
 Windows Git Bash notes:

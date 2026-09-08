@@ -1,0 +1,18 @@
+# Prometheus scrape configuration for the LOCAL compose observability stack
+# (Phase 6). No federation, no external/cloud services: one job scraping the
+# app's stdlib Prometheus text endpoint inside the compose network.
+#
+# The scrape interval is deliberately short (5 s) so a reviewer generating a
+# few minutes of traffic sees populated dashboards immediately. Counters are
+# in-process in the api container and reset when it restarts; Prometheus TSDB
+# data is therefore intentionally EPHEMERAL here (no named volume) -- only the
+# Grafana data volume is persisted (see docker-compose.yml).
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: convex-optimization-api
+    metrics_path: /metrics/prometheus
+    static_configs:
+      - targets: ["api:8000"]  # compose service name; container port 8000

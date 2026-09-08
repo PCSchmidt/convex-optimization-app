@@ -1,14 +1,26 @@
-# Local-only compose (Stage 3 smoke + Stage 4 API). NOT a production
-# deployment: no TLS, no auth, no multi-user serving, no public exposure.
+# Local-only compose (Stage 3 smoke + Stage 4 API + Phase 6 observability).
+# NOT a production deployment: no TLS, no auth, no multi-user serving, no
+# public exposure, no cloud services, no external monitoring.
 #
 #   docker compose build              # build the image
-#   docker compose up api             # serve the FastAPI app on ${PORT:-8000}
+#   docker compose up -d              # api + prometheus + grafana
 #   docker compose run --rm smoke     # one offline CLI solve (network_mode none)
-#   docker compose down               # stop and remove the containers
+#   docker compose down               # stop and remove containers (volumes kept)
 #
 # Environment variables (the only configuration surface; no secrets exist):
-#   PORT  host port for the api service (default 8000). The container always
-#         listens on 8000 internally; PORT changes only the published host port.
+#   PORT             host port for the api service (default 8000). The api
+#                    container always listens on 8000 internally.
+#   PROMETHEUS_PORT  host port for prometheus (default 9092); container 9090.
+#   GRAFANA_PORT     host port for grafana (default 3002); container 3000.
+#
+# Volumes: ONLY grafana-data is a named volume (intentional persistence of
+# Grafana users/orgs/settings so a reviewer's login survives `compose down`;
+# the dashboards themselves are provisioned from the committed JSON, so the
+# volume is NOT required for the dashboard to load). Prometheus TSDB data is
+# deliberately EPHEMERAL (no volume): the api counters it scrapes are
+# in-process and reset on api restart anyway, so persisting scrape history
+# would be misleading. Remove everything including grafana data with
+# `docker compose down -v`.
 services:
   api:
     build:
@@ -19,11 +31,61 @@ services:
     ports:
       - "${PORT:-8000}:8000"
     # Normal networking is REQUIRED here: a published port is incompatible
-    # with network_mode "none". The solve itself still needs no network
-    # (seeded synthetic problems; CPU-only ground truth at request time).
+    # with network_mode "none", and prometheus scrapes api:8000 inside the
+    # compose network. The solve itself still needs no network (seeded
+    # synthetic problems; CPU-only ground truth at request time).
     # --no-access-log: the Stage 5 structured JSON log lines (stdout) are the
     # sole log stream; uvicorn's non-JSON access log is suppressed.
     command: ["uvicorn", "convex_optimization.app:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  prometheus:
+    # Pinned to the same digest as :latest at Phase 6 build time (Prometheus
+    # 3.14.0). Scrapes the api's /metrics/prometheus every 5 s per
+    # ./prometheus.yml. No retention volume: TSDB data is ephemeral by design
+    # (see header note).
+    image: prom/prometheus:v3.14.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=1d"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "${PROMETHEUS_PORT:-9092}:9090"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  grafana:
+    # Pinned to the same digest as :latest at Phase 6 build time (Grafana OSS
+    # 13.0.2). Datasource + dashboards are provisioned declaratively from
+    # ./provisioning/ (datasource uid convex-prom is referenced by the
+    # dashboard JSON). Default local login admin/admin (OSS default; change
+    # nothing here -- this is a local, unexposed demo stack).
+    image: grafana/grafana-oss:13.0.2
+    environment:
+      # Keep the well-known local admin/admin defaults; no secrets exist.
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/convex_optimization.json
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      # Dashboard JSONs for the file provider (path in
+      # provisioning/dashboards/dashboards.yml). Nested bind over the
+      # grafana-data volume is intentional: dashboards are code (committed),
+      # only Grafana's sqlite/plugins live in the named volume.
+      - ./provisioning/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3002}:3000"
+    depends_on:
+      - prometheus
 
   smoke:
     build:
@@ -34,3 +96,6 @@ services:
     # network_mode "none" proves the CLI solve is fully offline.
     network_mode: "none"
     command: ["python", "-m", "convex_optimization.cli", "--problem", "logistic", "--method", "nesterov"]
+
+volumes:
+  grafana-data:

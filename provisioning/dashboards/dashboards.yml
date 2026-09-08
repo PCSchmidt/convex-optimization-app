@@ -1,0 +1,16 @@
+# Grafana declarative dashboard provisioning (Phase 6): auto-loads every
+# dashboard JSON committed under provisioning/dashboards/ (mounted into the
+# grafana container at /var/lib/grafana/dashboards).
+apiVersion: 1
+
+providers:
+  - name: convex-optimization
+    orgId: 1
+    folder: Convex Optimization
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

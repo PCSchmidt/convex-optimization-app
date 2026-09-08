@@ -61,7 +61,16 @@ A reviewer can clone this repo, run one command, and see a set of optimization m
 
 - [x] Structured logging of solve requests, iterations, and latency.
 - [x] Metrics endpoint exposing: request count, latency percentiles, error rate, convergence-failure rate.
-- [ ] Optional: Prometheus/Grafana dashboard.
+- [x] Optional: Prometheus/Grafana dashboard. (Phase 6: compose `prometheus`
+  + `grafana` services on env-overridable host ports 9092 / 3002; committed
+  `prometheus.yml` scrape config; declarative Grafana provisioning
+  (`provisioning/datasources`, `provisioning/dashboards` with dashboard JSON
+  uid `convex-optimization-app`, 14 panels incl. app-specific
+  convergence/iteration/gap families). Verified live: Prometheus target UP,
+  instant queries return real values from generated traffic
+  (`sum(convex_optimization_solves_total)` = 112), Grafana datasource health
+  200, dashboard uid 200. Only intentional persistence: `grafana-data` named
+  volume.)
 - [x] Phase 2 shared observability contract: `GET /metrics/prometheus` Prometheus text
   exposition (stdlib-only writer in `src/convex_optimization/prometheus.py`; generic
   families requests_total / errors_total / request_latency_seconds / up with the
