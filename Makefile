@@ -7,7 +7,7 @@ else
     VENV_PY := .venv/bin/python
 endif
 
-.PHONY: setup test lint format clean solve eval verify refresh rollback current docker-build smoke api
+.PHONY: setup test lint format clean solve eval verify refresh rollback current docker-build smoke api ui ui-build ui-test
 
 setup:
 	python -m venv .venv
@@ -76,8 +76,24 @@ smoke:
 api:
 	docker compose up --build api
 
+# Phase A2 workbench UI (React + Vite + TypeScript under ui/). Dev server
+# proxies /health /metrics /metrics/prometheus /solve /parse to the FastAPI
+# backend; API_PORT overrides 8000.
+ui:
+	npm --prefix ui install --no-audit --no-fund
+	npm --prefix ui run dev
+
+ui-build:
+	npm --prefix ui install --no-audit --no-fund
+	npm --prefix ui run build
+
+ui-test:
+	npm --prefix ui install --no-audit --no-fund
+	npm --prefix ui run test
+
+
 clean:
-	rm -rf .venv .pytest_cache .ruff_cache build dist
+	rm -rf .venv .pytest_cache .ruff_cache build dist ui/node_modules ui/dist
 	find . -name "__pycache__" -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.egg-info" -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	rm -f .coverage

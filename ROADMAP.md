@@ -117,8 +117,17 @@ readiness claims): single instance, in-process rate limiting, no auth.
     convex_optimization_parse_outcomes_total family on the existing writer.
   - 94 tests pass (60 pre-existing, unchanged except the brittle Prometheus family-count
     assertion 10 -> 11), ruff check + format clean.
-- [ ] A2 deployment: fly.io app, purchased domain, TLS at the proxy, React workbench
-  wiring (feature-flagged /parse behind a configured LLM key), deploy runbook evidence.
+- [x] **A2 workbench UI (local dev server)**: React + Vite + TypeScript app in `ui/`
+  (recharts + vitest, offline tests, `make ui` / `ui-build` / `ui-test`). Panels:
+  problem/method/params form with client-side caps mirroring the server, 429
+  Retry-After countdown, convergence chart from the history tail (log-scale gap),
+  converged vs 'hit the 2000-iteration cap' badge states, per-method explanations,
+  and the /parse NL box (hidden with an honest note on 503; verified=false
+  mismatches surfaced before running the spec). `/parse` stays
+  provider-dependent: without `LLM_API_KEY` the panel hides itself. NOT a
+  production deployment; fly.io wiring and TLS remain open below.
+- [ ] A2 deployment: fly.io app, purchased domain, TLS at the proxy, workbench
+  wiring to the deployed backend, deploy runbook evidence.
 - [ ] Honest scope note to carry forward: single instance, in-process rate limiting
   (resets on restart), no auth, no per-user quotas, no distributed state. Demo-grade.
 

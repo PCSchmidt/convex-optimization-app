@@ -495,6 +495,39 @@ SciPy ground-truth work only via /solve, never in /parse itself; the
 parameterized instances are capped at 200 dimensions to bound CPU per
 request. Nothing here claims production readiness.
 
+### Workbench UI (Phase A2 — local dev server only)
+
+`ui/` holds a React + Vite + TypeScript workbench (no marketing hero; a
+technical instrument panel). It is a DEV-SERVER artifact, not a deployment:
+`make ui` runs the Vite dev server, which proxies `/health`, `/metrics`,
+`/metrics/prometheus`, `/solve` and `/parse` to the FastAPI backend
+(`API_PORT` overrides 8000; no CORS setup needed at default same-origin).
+`make ui-build` type-checks and builds a static bundle; `make ui-test` runs
+the offline vitest suite (mocked fetch; 11 tests).
+
+Panels: problem/method selection with client-side validation mirroring the
+server caps (out-of-cap input blocks Solve with inline errors; `lam`/`ridge`/
+`condition` are disabled outside their problem), seed with a randomize button,
+solve status with a 429 Retry-After countdown, a convergence chart of the
+returned history tail (objective gap on a log scale, with an honest linear
+fallback when the gap is not plottable), result readout (iterations, final
+objective, ground truth and source, gap, residual, client round-trip), a
+per-method explanation panel written from the Stage 1 docstrings, and an NL
+prompt panel. Without parameters the UI states it is solving the FROZEN Stage 1
+benchmark instance; with `parameters` in the response it lists the resolved
+instance values.
+
+Honest-state handling, by design: a 200 with `converged=false` is rendered as
+a distinct "hit the 2000-iteration cap (not converged)" badge (the documented
+real outcome, NOT an error); a 422 inapplicable pair shows the server's
+applicable-methods list; `verified=false` parses keep HTTP 200 but surface the
+mismatch list prominently before "Run this spec"; and on 503
+`provider_not_configured` the NL panel hides itself behind the one-line
+explanation that no `LLM_API_KEY` is configured. Parsing uses an LLM plus the
+mechanical verifier; the solver never does. This UI makes no
+production-readiness claim and is not part of `make test` (backend tests and
+ruff stay Python-only).
+
 ### Deployment runbook (local Docker Compose)
 
 From a clean clone (Windows Git Bash; for POSIX shells the same commands work
