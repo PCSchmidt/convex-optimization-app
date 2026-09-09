@@ -528,6 +528,52 @@ mechanical verifier; the solver never does. This UI makes no
 production-readiness claim and is not part of `make test` (backend tests and
 ruff stay Python-only).
 
+### Deployment runbook (fly.io + convexoptimizer.stream, Phase B)
+
+Live at **https://convexoptimizer.stream** (also `www.`). One fly.io app,
+`convex-optimizer`, runs the FastAPI API AND the built workbench UI from the
+same process, same origin (Option A): the Dockerfile `COPY`s `ui/dist` and sets
+`SERVE_UI=1`, `app.py` mounts it last so API routes keep precedence. TLS
+terminates at fly's proxy (Let's Encrypt; the app itself never sees TLS).
+
+Deploy from the repo root (builds the UI bundle first; Docker Desktop must be
+running):
+
+    make deploy          # npm build of ui/ + fly deploy
+
+Secrets and environment (set via fly, never in the repo/image):
+
+    fly secrets import -a convex-optimizer < .env   # LLM_API_KEY (OpenRouter)
+    # RATE_LIMIT_PER_MIN=30 set in fly.toml [env]; optional knobs per README table above
+
+Domain + DNS (Cloudflare, all records DNS-ONLY -- proxied/orange-cloud records
+hide fly's IPs and break certificate issuance):
+
+    A     @     -> 66.241.124.7
+    AAAA  @     -> 2a09:8280:1::188:4b16:0
+    A     www   -> 66.241.124.7
+    AAAA  www   -> 2a09:8280:1::188:4b16:0
+    CNAME _acme-challenge     -> convexoptimizer.stream.02w6zrr.flydns.net
+    CNAME _acme-challenge.www -> www.convexoptimizer.stream.02w6zrr.flydns.net
+
+Certificates: `fly certs add convexoptimizer.stream` and
+`fly certs add www.convexoptimizer.stream`, then `fly certs check <host>`.
+Issued 2026-09-09 (Let's Encrypt, rsa+ecdsa, ~2 month expiry, auto-renewed).
+
+Acceptance evidence (2026-09-09, live): `/health` 200 on both hosts;
+frozen `/solve` byte-reproducible across repeat calls; parameterized solve
+(lasso, seed 7, n_vars 30) echoes resolved parameters; `n_vars: 500` -> 422;
+70 KiB body -> 413 (`declared_bytes: 70045`); 40-request burst -> 11x 429 with
+`Retry-After: 6`; `/parse` (LLM provider) returns `verified: true` with zero
+mismatches on a fully-specified NL problem; UI root 200 text/html, unknown
+paths 404 (no SPA fallback), `/docs` 200; Prometheus exposition carries the
+full family set.
+
+Honest scope at deploy: two shared-cpu-1x machines (fly HA default) with
+auto-stop suspend when idle; in-process rate limiting per machine (windows are
+per-instance, so the effective public burst ceiling is roughly 2x the
+configured 30/min); no auth, no persistence, demo grade.
+
 ### Deployment runbook (local Docker Compose)
 
 From a clean clone (Windows Git Bash; for POSIX shells the same commands work

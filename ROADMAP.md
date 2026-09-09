@@ -126,8 +126,15 @@ readiness claims): single instance, in-process rate limiting, no auth.
   mismatches surfaced before running the spec). `/parse` stays
   provider-dependent: without `LLM_API_KEY` the panel hides itself. NOT a
   production deployment; fly.io wiring and TLS remain open below.
-- [ ] A2 deployment: fly.io app, purchased domain, TLS at the proxy, workbench
-  wiring to the deployed backend, deploy runbook evidence.
+- [x] **A2 deployment (Phase B)**: live at https://convexoptimizer.stream (fly.io
+  app `convex-optimizer`, one process serving API + same-origin UI, `SERVE_UI=1`).
+  TLS terminates at fly's proxy (Let's Encrypt, apex + www, DNS-only Cloudflare
+  records). `LLM_API_KEY` set via `fly secrets import` (never in the repo/image).
+  Acceptance evidence: frozen solves byte-reproducible on the live app;
+  parameterized solve echoes resolved params; out-of-cap params -> 422; 70 KiB
+  body -> 413; burst traffic -> 429 + Retry-After; `/parse` LLM parse verified
+  end-to-end (verified=true, no mismatches); UI root 200, unknown paths 404,
+  /docs intact. Runbook with the exact records/commands in the README.
 - [ ] Honest scope note to carry forward: single instance, in-process rate limiting
   (resets on restart), no auth, no per-user quotas, no distributed state. Demo-grade.
 
