@@ -92,11 +92,14 @@ ui-test:
 	npm --prefix ui run test
 
 # Phase B: deploy API + same-origin UI to fly.io. Builds the UI bundle first
-# (the Dockerfile COPYs ui/dist; it does not build it).
+# (the Dockerfile COPYs ui/dist; it does not build it). FLY defaults to `fly`
+# on PATH; override it when flyctl lives elsewhere, e.g. on this Windows box:
+#   make deploy FLY=/c/Users/pchri/tools/flyctl/flyctl.exe
+FLY ?= fly
 deploy:
 	npm --prefix ui install --no-audit --no-fund
 	npm --prefix ui run build
-	fly deploy
+	$(FLY) deploy
 
 
 clean:
