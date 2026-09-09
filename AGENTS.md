@@ -10,9 +10,16 @@ This is a personal portfolio project, not production work. It must be honest, ri
 
 ## Current state (as of Sep 2026)
 
-- Dormant since Jun 2025.
-- Existing functionality: an educational app showcasing convex optimization concepts.
-- Python-based. The user is agnostic to stack, so a redesign is allowed if it serves the goal better.
+- LIVE at https://convexoptimizer.stream (fly.io app `convex-optimizer`; deploy
+  with `make deploy FLY=/c/Users/pchri/tools/flyctl/flyctl.exe` on this machine).
+- Full lifecycle complete: from-scratch NumPy first-order methods, versioned
+  benchmarks + experiment bundles, FastAPI serving with public hardening, a
+  same-origin React workbench (`ui/`), LLM-backed NL parsing with a mechanical
+  verifier, Prometheus/JSON observability, and the fly.io deployment.
+- Stack as chosen in the guidance below: Python 3.12 (floor raised for numpy
+  2.5.3), FastAPI, Docker, React+Vite+TS for the UI, fly.io hosting.
+- LLM secrets live in fly secrets only (imported from a gitignored `.env`);
+  the parse model is `z-ai/glm-5.3-flash` via OpenRouter.
 
 ## Non-negotiable requirements
 

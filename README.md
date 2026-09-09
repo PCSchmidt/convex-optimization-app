@@ -1,5 +1,126 @@
 # Convex Optimization App
 
+**Live: https://convexoptimizer.stream** (plus a workbench UI served from the
+same process). This repository contains the complete, honest lifecycle of a
+small but rigorous optimization service: methods implemented from scratch,
+benchmarked against independent ground truth, served over HTTP, monitored,
+hardened for public traffic, and deployed.
+
+## What is this? (plain-language overview)
+
+This app solves three classic convex optimization problems - least squares
+(fit the best trend line), lasso (fit the trend line AND drop useless inputs),
+and logistic regression (sort things into yes/no groups) - using four
+first-order methods (gradient descent, Nesterov accelerated gradient, ISTA,
+FISTA) that are **written from scratch in NumPy**. No solver library does the
+work; SciPy appears only as an independent referee that certifies the answers.
+
+You can drive it three ways:
+
+1. **The workbench UI** (what most visitors see): pick a problem and method,
+   optionally set the size and seed of a synthetic dataset, press Solve, and
+   watch the convergence chart settle into the optimum. A
+   [plain-language guide](https://convexoptimizer.stream) on the page explains
+   everything without assuming mathematical background.
+2. **Natural language**: type "lasso with 50 variables, 80 rows, seed 42,
+   lambda 0.5" and an LLM turns it into a structured request - which a
+   deterministic mechanical verifier then checks against your actual words
+   before anything is solved. A parse is never trusted blindly; mismatches
+   are surfaced, not hidden.
+3. **The API directly**: `POST /solve` and `POST /parse` are documented in
+   `/docs` (OpenAPI) with a bounded, honest error taxonomy.
+
+| | |
+| --- | --- |
+| Live site | https://convexoptimizer.stream (fly.io app `convex-optimizer`) |
+| Numerical core | NumPy only; all methods implemented in this repo |
+| Ground truth | SciPy / closed forms - a referee, never the method |
+| Backend tests | 98 passing, offline and deterministic (`make test`) |
+| Workbench UI tests | 12 passing, offline (`make ui-test`) |
+| LLM (parse only) | OpenAI-compatible endpoint via stdlib urllib; model `z-ai/glm-5.3-flash` (OpenRouter) |
+| Reproducibility | fixed seeds, pinned lockfile, versioned experiment bundles, byte-reproducible solves |
+| Honest scope | demo grade: no auth, per-machine in-process rate limiting, no persistence |
+
+## Architecture at a glance
+
+```mermaid
+flowchart TD
+    B["Browser: React + TypeScript workbench (ui/)"] -->|"same-origin fetch (no CORS)"| H["Hardening middleware<br>(rate limit · 64 KiB body cap · CORS policy)"]
+    H --> F["FastAPI app (app.py)<br>/solve · /parse · /health · /metrics"]
+    F --> S["POST /solve:<br>from-scratch NumPy first-order methods<br>(methods.py, problems.py)"]
+    S --> G["Ground truth per request:<br>SciPy L-BFGS-B / closed forms<br>(reference only, never the method)"]
+    F --> P["POST /parse:<br>OpenAI-compatible LLM call (stdlib urllib)<br>then a deterministic mechanical verifier"]
+    P -->|"only a verified spec"| S
+    F --> O["JSON logs + Prometheus exposition<br>(observability.py, prometheus.py)"]
+```
+
+One process serves everything (the React build is mounted into FastAPI at
+`/`, same origin, no CORS involved). The deploy target is fly.io; the full
+runbook lives under [Operational notes](#operational-notes) below.
+
+Where things live:
+
+| Path | What it is |
+| --- | --- |
+| `src/convex_optimization/methods.py` | The four solvers, from scratch, with per-iterate convergence history |
+| `src/convex_optimization/problems.py` | The three benchmark problems plus bounded user-parameterized instances |
+| `src/convex_optimization/cli.py` | Offline CLI (also the Docker smoke check) |
+| `src/convex_optimization/app.py` | FastAPI serving layer + the same-origin static UI mount |
+| `src/convex_optimization/hardening.py` | Rate limiting, body cap, CORS (public-readiness middleware) |
+| `src/convex_optimization/parsing.py` | LLM-backed NL parsing + the mechanical verifier |
+| `src/convex_optimization/observability.py`, `prometheus.py` | JSON logs and Prometheus exposition (stdlib only) |
+| `tests/` | 98 offline tests incl. correctness vs known solutions |
+| `ui/` | React + Vite + TypeScript workbench (instrument panel, no marketing) |
+| `experiments/` | Versioned benchmark bundles, run logs, incident record |
+| `provisioning/`, `prometheus.yml` | Local Grafana + Prometheus stack (compose) |
+| `Dockerfile`, `docker-compose.yml`, `fly.toml` | Container + local compose + fly.io deploy |
+| `INVENTORY.md` | Historical Stage 0 audit of the pre-refactor app |
+| `ROADMAP.md` | The stage-by-stage build story: what was done and in what order |
+
+## Quickstart (local, offline)
+
+```bash
+git clone https://github.com/PCSchmidt/convex-optimization-app
+cd convex-optimization-app
+make setup && make test   # pinned venv, then 98 offline tests
+make solve                # one fully offline CLI solve (the Docker smoke check)
+make ui                   # React dev server (proxies /solve and /parse to the API)
+```
+
+Serving locally (Docker Compose), the observability stack, and the fly.io
+deploy procedure are documented in [Operational notes](#operational-notes).
+
+## Approach: why it is built this way
+
+The through-line of every stage is **honesty under review**. Concretely:
+
+- **From-scratch methods, independent referee.** Every solver is implemented
+  here, and every answer is compared against a ground truth this code does not
+  own (closed-form normal equations, or SciPy L-BFGS-B - including a certified
+  smoothed reference for the nonsmooth lasso). You never have to trust the
+  methods on faith.
+- **Nothing is tuned.** All methods run the same fixed `1/L` step,
+  `tol=1e-10`, `max_iter=2000`, zero start. There is deliberately no
+  tolerance, step-size, or iteration-count surface in the API: results are
+  comparable across problems, methods, and time.
+- **Bit-reproducibility as a contract.** The same problem + parameters + seed
+  + method returns the byte-identical response, on a laptop and on the
+  deployed app. Benchmarks are frozen and versioned; the serving layer solves
+  the frozen baseline or a bounded seeded instance - never something
+  ad hoc.
+- **The LLM never gets the final say.** `/parse` uses an LLM, then a
+  deterministic mechanical verifier checks the structured result against the
+  literal text (problem keywords, dimensions, seed, weights). Conflicting
+  numbers are not silently resolved: the response is `verified: false` with a
+  mismatch list, and the UI shows it prominently.
+- **Honest failure states.** A 200 with `converged: false` is displayed as
+  "hit the 2000-iteration cap" - a real outcome, not an error. Rate limits are
+  429s with `Retry-After`; oversized bodies are 413s; the NL panel hides
+  itself (with an explanation) when no LLM key is configured.
+- **Bounded everything.** Request dimensions, seeds, weights, error classes,
+  and metric labels are all hard-capped so the public demo cannot be pushed
+  into unbounded work or unbounded cardinality.
+
 ## Motivation
 
 This app is the optimization + rigor pillar of a personal portfolio. Its goal
@@ -395,7 +516,7 @@ Prometheus at `http://localhost:9092`, API on `${PORT:-8000}` (currently 8010).
 
 ### Phase A: public readiness (A1 backend hardening)
 
-The service is being deployed publicly (fly.io, behind a purchased domain,
+The service is deployed publicly (fly.io, behind a purchased domain,
 with a React workbench UI). Phase A1 is the backend half of that work. Scope
 is HONESTLY DEMO-GRADE: single instance, IN-PROCESS rate limiting (resets on
 restart, no shared state), NO auth, NO TLS termination at the app (fly's
@@ -495,15 +616,17 @@ SciPy ground-truth work only via /solve, never in /parse itself; the
 parameterized instances are capped at 200 dimensions to bound CPU per
 request. Nothing here claims production readiness.
 
-### Workbench UI (Phase A2 — local dev server only)
+### Workbench UI (Phase A2)
 
 `ui/` holds a React + Vite + TypeScript workbench (no marketing hero; a
-technical instrument panel). It is a DEV-SERVER artifact, not a deployment:
-`make ui` runs the Vite dev server, which proxies `/health`, `/metrics`,
-`/metrics/prometheus`, `/solve` and `/parse` to the FastAPI backend
-(`API_PORT` overrides 8000; no CORS setup needed at default same-origin).
-`make ui-build` type-checks and builds a static bundle; `make ui-test` runs
-the offline vitest suite (mocked fetch; 11 tests).
+technical instrument panel). Locally, `make ui` runs the Vite dev server,
+which proxies `/health`, `/metrics`, `/metrics/prometheus`, `/solve` and
+`/parse` to the FastAPI backend (`API_PORT` overrides 8000; no CORS setup
+needed at default same-origin). `make ui-build` type-checks and builds a
+static bundle; `make ui-test` runs the offline vitest suite (mocked fetch;
+12 tests). In the deployed app the SAME built bundle is mounted into FastAPI
+at `/` (same origin, `SERVE_UI=1`; see the fly.io runbook below) - there is
+one UI, served two ways.
 
 A plain-language guide (`ExplainerPanel`, full width below the workbench) explains
 convex optimization for non-specialist readers: the bowl-shaped landscape idea, the

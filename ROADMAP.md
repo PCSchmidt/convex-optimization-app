@@ -124,8 +124,10 @@ readiness claims): single instance, in-process rate limiting, no auth.
   converged vs 'hit the 2000-iteration cap' badge states, per-method explanations,
   and the /parse NL box (hidden with an honest note on 503; verified=false
   mismatches surfaced before running the spec). `/parse` stays
-  provider-dependent: without `LLM_API_KEY` the panel hides itself. NOT a
-  production deployment; fly.io wiring and TLS remain open below.
+  provider-dependent: without `LLM_API_KEY` the panel hides itself. A
+  plain-language ExplainerPanel (added post-Phase B) makes the page readable
+  for non-specialists. The same bundle is mounted into FastAPI at `/` in the
+  deployed app (see the A2 deployment bullet).
 - [x] **A2 deployment (Phase B)**: live at https://convexoptimizer.stream (fly.io
   app `convex-optimizer`, one process serving API + same-origin UI, `SERVE_UI=1`).
   TLS terminates at fly's proxy (Let's Encrypt, apex + www, DNS-only Cloudflare
@@ -140,7 +142,9 @@ readiness claims): single instance, in-process rate limiting, no auth.
 
 ## Portfolio presentation
 
-- [ ] README tells the full lifecycle story with real benchmark numbers, emphasizing rigor.
+- [x] README tells the full lifecycle story with real benchmark numbers, emphasizing rigor
+  (plain-language overview + architecture map added after Phase B; Results/Method sections
+  carry the numbers; live site linked at the top).
 - [ ] Link the repo from `pcschmidt.github.io`.
 - [ ] Prepare a 3-sentence interview arc per lifecycle stage.
 
