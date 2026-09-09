@@ -505,6 +505,13 @@ technical instrument panel). It is a DEV-SERVER artifact, not a deployment:
 `make ui-build` type-checks and builds a static bundle; `make ui-test` runs
 the offline vitest suite (mocked fetch; 11 tests).
 
+A plain-language guide (`ExplainerPanel`, full width below the workbench) explains
+convex optimization for non-specialist readers: the bowl-shaped landscape idea, the
+three problem types with real-world analogies (trend fitting, sensor selection,
+yes/no questions), the four methods in everyday words, and a worked rent-prediction
+example with concrete parameters (lasso + ista, seed 42, 80x50, lam 0.5) the reader
+can reproduce on the page.
+
 Panels: problem/method selection with client-side validation mirroring the
 server caps (out-of-cap input blocks Solve with inline errors; `lam`/`ridge`/
 `condition` are disabled outside their problem), seed with a randomize button,

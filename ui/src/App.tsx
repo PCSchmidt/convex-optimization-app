@@ -7,6 +7,7 @@ import {
   type SolveResponse,
 } from "./api";
 import ConvergenceChart from "./components/ConvergenceChart";
+import ExplainerPanel from "./components/ExplainerPanel";
 import MethodPanel from "./components/MethodPanel";
 import ParsePanel from "./components/ParsePanel";
 import ResultPanel from "./components/ResultPanel";
@@ -330,6 +331,8 @@ export default function App() {
           <MethodPanel />
         </div>
       </div>
+
+      <ExplainerPanel />
     </main>
   );
 }

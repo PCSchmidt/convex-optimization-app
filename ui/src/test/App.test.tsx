@@ -42,6 +42,24 @@ async function solve(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("convex_optimization workbench UI", () => {
+  it("plain-language explainer renders with problems, methods and the worked example", () => {
+    render(<App />);
+    expect(
+      screen.getByRole("heading", { name: /plain-language guide/i }),
+    ).toBeInTheDocument();
+    // The three problem types, by their real-world plain names.
+    expect(screen.getByText(/draw the best trend line/i)).toBeInTheDocument();
+    expect(screen.getByText(/find the trend line that ignores junk/i)).toBeInTheDocument();
+    expect(screen.getByText(/yes\/no questions/i)).toBeInTheDocument();
+    // The four methods.
+    expect(screen.getByText(/steady steps with a glide/i)).toBeInTheDocument();
+    // The worked example with its reproducible parameters.
+    expect(screen.getByText(/rent-prediction example/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/seed/i).length).toBeGreaterThan(0);
+    // Honesty note about the iteration cap is part of the guide.
+    expect(screen.getAllByText(/2000-iteration cap/i).length).toBeGreaterThan(0);
+  });
+
   it("frozen instance: empty params note shown and /solve body has no params", async () => {
     const fetchSpy = mockFetch(async (url, init) => {
       if (url === "/solve") return jsonResponse(CONVERGED_RESULT);
