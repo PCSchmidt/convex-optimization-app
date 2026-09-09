@@ -25,6 +25,12 @@ COPY src/ ./src/
 COPY experiments/ ./experiments/
 COPY pyproject.toml README.md ./
 
+# Phase B (Option A): serve the built workbench UI from the API process,
+# same origin. The dist bundle is built on the host (make ui-build) BEFORE
+# docker build; ui/src and ui/node_modules are NOT needed in the image.
+ENV SERVE_UI=1
+COPY ui/dist/ ./ui/dist/
+
 # Stage 4 serving (compose `api` service) overrides the command with uvicorn;
 # port 8000 is the fixed container-internal API port.
 EXPOSE 8000

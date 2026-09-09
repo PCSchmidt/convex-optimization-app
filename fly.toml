@@ -1,0 +1,37 @@
+# fly.io deploy config: ONE app serving the FastAPI API and the built
+# workbench UI from the same process, same origin (Phase B, Option A).
+# TLS terminates at the fly proxy; the custom domain convexoptimizer.stream
+# is attached with `fly certs add` (see the README deployment runbook).
+#
+# Honest scope: single machine, demo grade, no auth. auto_stop suspends the
+# machine when idle (seconds of cold start on the first request) to keep the
+# cost near zero for a portfolio demo.
+
+app = "convex-optimizer"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  RATE_LIMIT_PER_MIN = "30"
+
+# Replaces the Dockerfile CMD (the offline CLI smoke solve) with the API+UI
+# server. Port 8080 matches http_service.internal_port.
+[processes]
+  app = "python -m uvicorn convex_optimization.app:app --host 0.0.0.0 --port 8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "60s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/health"

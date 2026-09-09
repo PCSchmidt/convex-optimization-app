@@ -91,6 +91,13 @@ ui-test:
 	npm --prefix ui install --no-audit --no-fund
 	npm --prefix ui run test
 
+# Phase B: deploy API + same-origin UI to fly.io. Builds the UI bundle first
+# (the Dockerfile COPYs ui/dist; it does not build it).
+deploy:
+	npm --prefix ui install --no-audit --no-fund
+	npm --prefix ui run build
+	fly deploy
+
 
 clean:
 	rm -rf .venv .pytest_cache .ruff_cache build dist ui/node_modules ui/dist

@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
@@ -74,6 +75,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.routing import Match
 
@@ -595,3 +597,30 @@ def parse_endpoint(request: ParseRequest) -> ParseResponse:
     prometheus_metrics.record_parse("verified" if verified else "parsed")
     metrics.record("/parse", 200, elapsed_ms())
     return response
+
+
+def _mount_ui(a: FastAPI) -> None:
+    """Serve the built workbench UI from the API process (Option A, same origin).
+
+    Opt-in via ``SERVE_UI=1`` so local dev, tests, and the CLI smoke check are
+    unchanged by default. ``UI_DIST_DIR`` overrides the dist directory
+    (default: ``<repo root>/ui/dist``, i.e. ``ui/dist`` next to ``src/``). The
+    mount is added LAST so every API route (including /docs and /health) keeps
+    precedence; ``html=True`` serves ``index.html`` at ``/``. No SPA fallback:
+    unknown paths 404 honestly. This is same-origin serving -- no CORS headers
+    are involved.
+    """
+    if os.environ.get("SERVE_UI") != "1":
+        return
+    dist = Path(
+        os.environ.get(
+            "UI_DIST_DIR",
+            Path(__file__).resolve().parents[2] / "ui" / "dist",
+        )
+    )
+    if not (dist / "index.html").is_file():
+        return
+    a.mount("/", StaticFiles(directory=str(dist), html=True), name="ui")
+
+
+_mount_ui(app)

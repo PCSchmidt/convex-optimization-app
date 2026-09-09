@@ -11,7 +11,8 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 build/
-dist/
+/dist/
+ui/node_modules/
 .coverage*
 htmlcov/
 artifacts/
